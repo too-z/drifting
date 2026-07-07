@@ -1,0 +1,284 @@
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 2 files:  50%|█████     | 1/2 [00:56<00:56, 56.28s/it]Fetching 2 files: 100%|██████████| 2/2 [00:56<00:00, 28.14s/it]
+=== metadata.json ===
+{
+  "schema_version": 1,
+  "artifact_type": "ema_model",
+  "kind": "gen",
+  "backend": "jax",
+  "model_id": "ablation",
+  "config_name": "ablation",
+  "config_path": "configs/gen/latent_ablation.yaml",
+  "model_config": {
+    "cond_dim": 768,
+    "input_size": 32,
+    "in_channels": 4,
+    "patch_size": 2,
+    "hidden_size": 768,
+    "depth": 12,
+    "num_heads": 12,
+    "mlp_ratio": 4.0,
+    "out_channels": 4,
+    "use_qknorm": true,
+    "use_swiglu": true,
+    "use_rope": true,
+    "use_rmsnorm": true,
+    "n_cls_tokens": 16,
+    "noise_classes": 64,
+    "noise_coords": 32,
+    "use_bf16": true,
+    "attn_fp32": true,
+    "num_classes": 1000
+  },
+  "source": {
+    "step_requested": "30000",
+    "step_loaded": 30000,
+    "ema_requested": 0.999,
+    "ema_selected": "0.999"
+  }
+}
+
+=== param tree ===
+Embed_0/embedding                                                                                    (1000, 768)              float32
+LightningDiT_0/FinalLayer_0/RMSNorm_0/weight                                                         (768,)                   float32
+LightningDiT_0/FinalLayer_0/TorchLinear_0/Dense_0/bias                                               (1536,)                  float32
+LightningDiT_0/FinalLayer_0/TorchLinear_0/Dense_0/kernel                                             (768, 1536)              float32
+LightningDiT_0/FinalLayer_0/TorchLinear_1/Dense_0/bias                                               (16,)                    float32
+LightningDiT_0/FinalLayer_0/TorchLinear_1/Dense_0/kernel                                             (768, 16)                float32
+LightningDiT_0/TorchLinear_0/Dense_0/bias                                                            (768,)                   float32
+LightningDiT_0/TorchLinear_0/Dense_0/kernel                                                          (16, 768)                float32
+LightningDiT_0/TorchLinear_1/Dense_0/bias                                                            (768,)                   float32
+LightningDiT_0/TorchLinear_1/Dense_0/kernel                                                          (768, 768)               float32
+LightningDiT_0/blocks_0/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_0/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_0/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_0/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_0/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_0/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_0/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_0/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_0/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_0/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_0/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_1/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_1/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_1/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_1/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_1/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_1/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_1/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_1/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_1/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_1/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_1/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_10/Attention_0/TorchLinear_0/Dense_0/bias                                      (2304,)                  float32
+LightningDiT_0/blocks_10/Attention_0/TorchLinear_0/Dense_0/kernel                                    (768, 2304)              float32
+LightningDiT_0/blocks_10/Attention_0/TorchLinear_1/Dense_0/bias                                      (768,)                   float32
+LightningDiT_0/blocks_10/Attention_0/TorchLinear_1/Dense_0/kernel                                    (768, 768)               float32
+LightningDiT_0/blocks_10/Attention_0/k_norm/weight                                                   (64,)                    float32
+LightningDiT_0/blocks_10/Attention_0/q_norm/weight                                                   (64,)                    float32
+LightningDiT_0/blocks_10/RMSNorm_0/weight                                                            (768,)                   float32
+LightningDiT_0/blocks_10/RMSNorm_1/weight                                                            (768,)                   float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                      (2048,)                  float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                    (768, 2048)              float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                      (2048,)                  float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                    (768, 2048)              float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                      (768,)                   float32
+LightningDiT_0/blocks_10/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                    (2048, 768)              float32
+LightningDiT_0/blocks_10/TorchLinear_0/Dense_0/bias                                                  (4608,)                  float32
+LightningDiT_0/blocks_10/TorchLinear_0/Dense_0/kernel                                                (768, 4608)              float32
+LightningDiT_0/blocks_11/Attention_0/TorchLinear_0/Dense_0/bias                                      (2304,)                  float32
+LightningDiT_0/blocks_11/Attention_0/TorchLinear_0/Dense_0/kernel                                    (768, 2304)              float32
+LightningDiT_0/blocks_11/Attention_0/TorchLinear_1/Dense_0/bias                                      (768,)                   float32
+LightningDiT_0/blocks_11/Attention_0/TorchLinear_1/Dense_0/kernel                                    (768, 768)               float32
+LightningDiT_0/blocks_11/Attention_0/k_norm/weight                                                   (64,)                    float32
+LightningDiT_0/blocks_11/Attention_0/q_norm/weight                                                   (64,)                    float32
+LightningDiT_0/blocks_11/RMSNorm_0/weight                                                            (768,)                   float32
+LightningDiT_0/blocks_11/RMSNorm_1/weight                                                            (768,)                   float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                      (2048,)                  float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                    (768, 2048)              float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                      (2048,)                  float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                    (768, 2048)              float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                      (768,)                   float32
+LightningDiT_0/blocks_11/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                    (2048, 768)              float32
+LightningDiT_0/blocks_11/TorchLinear_0/Dense_0/bias                                                  (4608,)                  float32
+LightningDiT_0/blocks_11/TorchLinear_0/Dense_0/kernel                                                (768, 4608)              float32
+LightningDiT_0/blocks_2/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_2/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_2/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_2/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_2/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_2/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_2/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_2/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_2/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_2/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_2/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_3/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_3/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_3/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_3/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_3/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_3/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_3/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_3/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_3/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_3/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_3/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_4/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_4/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_4/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_4/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_4/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_4/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_4/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_4/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_4/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_4/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_4/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_5/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_5/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_5/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_5/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_5/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_5/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_5/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_5/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_5/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_5/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_5/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_6/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_6/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_6/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_6/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_6/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_6/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_6/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_6/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_6/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_6/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_6/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_7/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_7/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_7/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_7/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_7/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_7/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_7/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_7/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_7/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_7/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_7/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_8/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_8/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_8/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_8/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_8/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_8/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_8/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_8/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_8/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_8/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_8/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/blocks_9/Attention_0/TorchLinear_0/Dense_0/bias                                       (2304,)                  float32
+LightningDiT_0/blocks_9/Attention_0/TorchLinear_0/Dense_0/kernel                                     (768, 2304)              float32
+LightningDiT_0/blocks_9/Attention_0/TorchLinear_1/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_9/Attention_0/TorchLinear_1/Dense_0/kernel                                     (768, 768)               float32
+LightningDiT_0/blocks_9/Attention_0/k_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_9/Attention_0/q_norm/weight                                                    (64,)                    float32
+LightningDiT_0/blocks_9/RMSNorm_0/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_9/RMSNorm_1/weight                                                             (768,)                   float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_0/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_0/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_1/Dense_0/bias                                       (2048,)                  float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_1/Dense_0/kernel                                     (768, 2048)              float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_2/Dense_0/bias                                       (768,)                   float32
+LightningDiT_0/blocks_9/SwiGLUFFN_0/TorchLinear_2/Dense_0/kernel                                     (2048, 768)              float32
+LightningDiT_0/blocks_9/TorchLinear_0/Dense_0/bias                                                   (4608,)                  float32
+LightningDiT_0/blocks_9/TorchLinear_0/Dense_0/kernel                                                 (768, 4608)              float32
+LightningDiT_0/cls_embed                                                                             (1, 16, 768)             float32
+LightningDiT_0/pos_embed                                                                             (1, 256, 768)            float32
+RMSNorm_0/weight                                                                                     (768,)                   float32
+TimestepEmbedder_0/TorchLinear_0/Dense_0/bias                                                        (768,)                   float32
+TimestepEmbedder_0/TorchLinear_0/Dense_0/kernel                                                      (256, 768)               float32
+TimestepEmbedder_0/TorchLinear_1/Dense_0/bias                                                        (768,)                   float32
+TimestepEmbedder_0/TorchLinear_1/Dense_0/kernel                                                      (768, 768)               float32
+noise_embeds_0/embedding                                                                             (64, 768)                float32
+noise_embeds_1/embedding                                                                             (64, 768)                float32
+noise_embeds_10/embedding                                                                            (64, 768)                float32
+noise_embeds_11/embedding                                                                            (64, 768)                float32
+noise_embeds_12/embedding                                                                            (64, 768)                float32
+noise_embeds_13/embedding                                                                            (64, 768)                float32
+noise_embeds_14/embedding                                                                            (64, 768)                float32
+noise_embeds_15/embedding                                                                            (64, 768)                float32
+noise_embeds_16/embedding                                                                            (64, 768)                float32
+noise_embeds_17/embedding                                                                            (64, 768)                float32
+noise_embeds_18/embedding                                                                            (64, 768)                float32
+noise_embeds_19/embedding                                                                            (64, 768)                float32
+noise_embeds_2/embedding                                                                             (64, 768)                float32
+noise_embeds_20/embedding                                                                            (64, 768)                float32
+noise_embeds_21/embedding                                                                            (64, 768)                float32
+noise_embeds_22/embedding                                                                            (64, 768)                float32
+noise_embeds_23/embedding                                                                            (64, 768)                float32
+noise_embeds_24/embedding                                                                            (64, 768)                float32
+noise_embeds_25/embedding                                                                            (64, 768)                float32
+noise_embeds_26/embedding                                                                            (64, 768)                float32
+noise_embeds_27/embedding                                                                            (64, 768)                float32
+noise_embeds_28/embedding                                                                            (64, 768)                float32
+noise_embeds_29/embedding                                                                            (64, 768)                float32
+noise_embeds_3/embedding                                                                             (64, 768)                float32
+noise_embeds_30/embedding                                                                            (64, 768)                float32
+noise_embeds_31/embedding                                                                            (64, 768)                float32
+noise_embeds_4/embedding                                                                             (64, 768)                float32
+noise_embeds_5/embedding                                                                             (64, 768)                float32
+noise_embeds_6/embedding                                                                             (64, 768)                float32
+noise_embeds_7/embedding                                                                             (64, 768)                float32
+noise_embeds_8/embedding                                                                             (64, 768)                float32
+noise_embeds_9/embedding                                                                             (64, 768)                float32
+
+total params: 132,708,880
