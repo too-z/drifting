@@ -25,7 +25,7 @@ from torchvision.datasets import ImageFolder
 from pt.dataset.latent import LatentDataset
 from pt.dataset.vae import vae_enc_decode
 from pt.utils import dist_util
-from utils.env import IMAGENET_CACHE_PATH, IMAGENET_PATH
+from utils import env  # paths read at call time so tests can override them
 
 
 def center_crop_arr(pil_image: Image.Image, image_size: int) -> Image.Image:
@@ -64,10 +64,10 @@ def _build_transforms(resolution: int, use_aug: bool, split: str):
 
 def _build_imagenet_dataset(*, resolution: int, use_aug: bool, use_cache: bool, split: str):
     if use_cache:
-        return LatentDataset(root=os.path.join(IMAGENET_CACHE_PATH, split))
+        return LatentDataset(root=os.path.join(env.IMAGENET_CACHE_PATH, split))
 
     transform = _build_transforms(resolution, use_aug=use_aug, split=split)
-    return ImageFolder(root=os.path.join(IMAGENET_PATH, split), transform=transform)
+    return ImageFolder(root=os.path.join(env.IMAGENET_PATH, split), transform=transform)
 
 
 def worker_init_fn(worker_id: int, rank: int) -> None:

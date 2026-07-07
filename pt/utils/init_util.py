@@ -46,6 +46,21 @@ def load_generator_model_and_params(init_from, hf_cache_dir):
     return model, metadata
 
 
+def load_params_for_init(kind, init_from, hf_cache_dir):
+    """Torch analog of utils/init_util.py:maybe_init_state_params' loading half:
+    returns a state_dict from an hf:// or local artifact. The trainer loads it
+    into BOTH the live params and the EMA (matching the JAX behavior)."""
+    if init_from.startswith("hf://"):
+        from pt.models.hf import _ensure_torch_artifact
+
+        art_dir = _ensure_torch_artifact(kind, init_from[len("hf://"):], hf_cache_dir)
+        from safetensors.torch import load_file
+
+        return load_file(str(art_dir / "model.safetensors"))
+    state, _ = _load_local(kind, init_from)
+    return state
+
+
 def load_mae_model_and_params(path, hf_cache_dir):
     """Returns (model, metadata) for the frozen feature model."""
     from pt.models.hf import load_mae_torch

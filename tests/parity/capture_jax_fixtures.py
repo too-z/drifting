@@ -422,6 +422,58 @@ def capture_fid(args):
     print(f"wrote {FIXDIR / 'fid.npz'} ({len(out)} arrays)")
 
 
+def capture_optim(args):
+    """optax adamw + external clip_by_global_norm trajectory on synthetic
+    tensors — pins the torch AdamW + clip_grad_norm_ + EMA port."""
+    import jax
+    import jax.numpy as jnp
+    import optax
+
+    rs = np.random.RandomState(7)
+    init_w = rs.randn(4, 3).astype(np.float32)
+    init_b = rs.randn(3).astype(np.float32)
+    params = {"w": jnp.asarray(init_w), "b": jnp.asarray(init_b)}
+    n_steps = 25
+    grads_w = rs.randn(n_steps, 4, 3).astype(np.float32) * 3.0  # exceeds clip sometimes
+    grads_b = rs.randn(n_steps, 3).astype(np.float32) * 3.0
+
+    lr_values = np.array(
+        [1e-6 + (2e-3 - 1e-6) * min(t / 10, 1.0) for t in range(n_steps)],
+        dtype=np.float64,
+    )
+    tx = optax.adamw(
+        learning_rate=lambda t: lr_values[int(t)] if int(t) < n_steps else lr_values[-1],
+        weight_decay=0.01, b1=0.9, b2=0.95,
+    )
+    opt_state = tx.init(params)
+    ema = jax.tree.map(lambda p: p, params)
+    ema_decay = 0.97
+    clipper = optax.clip_by_global_norm(2.0)
+
+    traj_w, traj_b, traj_ema_w, gnorms = [], [], [], []
+    for t in range(n_steps):
+        grads = {"w": jnp.asarray(grads_w[t]), "b": jnp.asarray(grads_b[t])}
+        gnorms.append(float(optax.global_norm(grads)))
+        clipped, _ = clipper.update(grads, None)
+        updates, opt_state = tx.update(clipped, opt_state, params)
+        params = optax.apply_updates(params, updates)
+        ema = jax.tree.map(lambda e, p: e * ema_decay + p * (1 - ema_decay), ema, params)
+        traj_w.append(np.asarray(params["w"]))
+        traj_b.append(np.asarray(params["b"]))
+        traj_ema_w.append(np.asarray(ema["w"]))
+
+    FIXDIR.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        FIXDIR / "optim.npz",
+        init_w=init_w, init_b=init_b,
+        grads_w=grads_w, grads_b=grads_b, lr_values=lr_values,
+        traj_w=np.stack(traj_w), traj_b=np.stack(traj_b),
+        traj_ema_w=np.stack(traj_ema_w), gnorms=np.asarray(gnorms, np.float64),
+        ema_decay=np.float64(ema_decay),
+    )
+    print(f"wrote {FIXDIR / 'optim.npz'}")
+
+
 def capture_convnext(args):
     """Flax ConvNeXtV2-base get_activations reference (fp32 — the production
     path; configs never set convnext_bf16).
@@ -468,6 +520,7 @@ CAPTURES = {
     "lr": lambda args: capture_lr_schedule(),
     "vae": capture_vae,
     "convnext": capture_convnext,
+    "optim": capture_optim,
     "fid": capture_fid,
 }
 
