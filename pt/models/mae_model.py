@@ -385,3 +385,77 @@ def mae_from_metadata(metadata) -> MAEResNet:
     model_config = dict(metadata.get("model_config", {}) or {})
     num_classes = int(model_config.pop("num_classes", 1000))
     return MAEResNet(num_classes=num_classes, **model_config)
+
+
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
+
+
+def build_activation_function(
+    mae_path: str = "",
+    use_convnext=False,
+    convnext_bf16=False,
+    use_mae=True,
+    postprocess_fn=lambda x: x,
+    hf_cache_dir=None,
+    device=None,
+):
+    """Torch counterpart of models/mae_model.py:build_activation_function.
+
+    Returns (activation_fn, variables). activation_fn keeps the JAX call
+    signature activation_fn(params, x, ...) but `params` is ignored — the
+    frozen torch modules hold their own weights. `variables` holds the modules
+    ({"mae_model", "convnext_model"}) so the trainer can move/freeze them.
+
+    x is BCHW. The "global" feature flattens BCHW (the JAX version flattened
+    BHWC) — a fixed permutation of coordinates, which leaves the distance-based
+    drift loss unchanged as long as gen/pos/neg all go through this same fn.
+    """
+    import os
+
+    from utils.env import HF_ROOT
+
+    hf_cache_dir = hf_cache_dir or os.environ.get("HF_ROOT", HF_ROOT)
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    variables = {}
+    feature_model = None
+    convnext_model = None
+
+    if use_mae:
+        from pt.utils.init_util import load_mae_model_and_params
+
+        feature_model, _ = load_mae_model_and_params(mae_path, hf_cache_dir)
+        feature_model = feature_model.to(device).eval().requires_grad_(False)
+        variables["mae_model"] = feature_model
+
+    if use_convnext:
+        from pt.models.convnext import load_convnext_model
+
+        convnext_model = load_convnext_model("base", use_bf16=convnext_bf16)
+        convnext_model = convnext_model.to(device).eval().requires_grad_(False)
+        variables["convnext_model"] = convnext_model
+
+    def activation_fn(params, x, convnext_kwargs=dict(), has_scale=False, **kwargs):
+        usual_feats = dict()
+        usual_feats["global"] = x.reshape(x.shape[0], 1, -1)
+        if has_scale:
+            usual_feats["norm_x"] = torch.sqrt(
+                (x ** 2).mean(dim=(2, 3)) + 1e-6
+            )[:, None, :]
+
+        if use_mae:
+            mae_feats = feature_model.get_activations(x, **kwargs)
+            usual_feats = {**usual_feats, **mae_feats}
+
+        if use_convnext:
+            xi = postprocess_fn(x)
+            mean = torch.tensor(_IMAGENET_MEAN, device=xi.device).view(1, 3, 1, 1)
+            std = torch.tensor(_IMAGENET_STD, device=xi.device).view(1, 3, 1, 1)
+            xi = (xi - mean) / std
+            convnext_feats = convnext_model.get_activations(xi, **convnext_kwargs)
+            usual_feats = {**usual_feats, **convnext_feats}
+        return usual_feats
+
+    return activation_fn, variables
