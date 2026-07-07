@@ -1,0 +1,191 @@
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 2 files:  50%|█████     | 1/2 [02:31<02:31, 151.00s/it]Fetching 2 files: 100%|██████████| 2/2 [02:31<00:00, 75.50s/it] 
+=== metadata.json ===
+{
+  "schema_version": 1,
+  "artifact_type": "ema_model",
+  "kind": "mae",
+  "backend": "jax",
+  "model_id": "mae_latent_256",
+  "config_name": "mae_latent_256",
+  "config_path": "configs/gen/latent_ablation.yaml",
+  "model_config": {
+    "base_channels": 256,
+    "patch_size": 2,
+    "dropout_prob": 0.0,
+    "layers": [
+      3,
+      4,
+      6,
+      3
+    ],
+    "in_channels": 4,
+    "use_bf16": true,
+    "input_patch_size": 1
+  },
+  "source": {
+    "step_requested": "30000",
+    "step_loaded": 30000,
+    "ema_requested": 0.9995,
+    "ema_selected": "0.9995"
+  }
+}
+
+=== param tree ===
+decoder/bridge/conv/kernel                                                                           (3, 3, 2048, 2048)       float32
+decoder/bridge/gn/bias                                                                               (2048,)                  float32
+decoder/bridge/gn/scale                                                                              (2048,)                  float32
+decoder/head/bias                                                                                    (4,)                     float32
+decoder/head/kernel                                                                                  (1, 1, 256, 4)           float32
+decoder/up10/concat_norm_fn/bias                                                                     (512,)                   float32
+decoder/up10/concat_norm_fn/scale                                                                    (512,)                   float32
+decoder/up10/proj/conv/kernel                                                                        (3, 3, 512, 256)         float32
+decoder/up10/proj/gn/bias                                                                            (256,)                   float32
+decoder/up10/proj/gn/scale                                                                           (256,)                   float32
+decoder/up10/refine/conv/kernel                                                                      (3, 3, 256, 256)         float32
+decoder/up10/refine/gn/bias                                                                          (256,)                   float32
+decoder/up10/refine/gn/scale                                                                         (256,)                   float32
+decoder/up21/concat_norm_fn/bias                                                                     (768,)                   float32
+decoder/up21/concat_norm_fn/scale                                                                    (768,)                   float32
+decoder/up21/proj/conv/kernel                                                                        (3, 3, 768, 256)         float32
+decoder/up21/proj/gn/bias                                                                            (256,)                   float32
+decoder/up21/proj/gn/scale                                                                           (256,)                   float32
+decoder/up21/refine/conv/kernel                                                                      (3, 3, 256, 256)         float32
+decoder/up21/refine/gn/bias                                                                          (256,)                   float32
+decoder/up21/refine/gn/scale                                                                         (256,)                   float32
+decoder/up32/concat_norm_fn/bias                                                                     (1536,)                  float32
+decoder/up32/concat_norm_fn/scale                                                                    (1536,)                  float32
+decoder/up32/proj/conv/kernel                                                                        (3, 3, 1536, 512)        float32
+decoder/up32/proj/gn/bias                                                                            (512,)                   float32
+decoder/up32/proj/gn/scale                                                                           (512,)                   float32
+decoder/up32/refine/conv/kernel                                                                      (3, 3, 512, 512)         float32
+decoder/up32/refine/gn/bias                                                                          (512,)                   float32
+decoder/up32/refine/gn/scale                                                                         (512,)                   float32
+decoder/up43/concat_norm_fn/bias                                                                     (3072,)                  float32
+decoder/up43/concat_norm_fn/scale                                                                    (3072,)                  float32
+decoder/up43/proj/conv/kernel                                                                        (3, 3, 3072, 1024)       float32
+decoder/up43/proj/gn/bias                                                                            (1024,)                  float32
+decoder/up43/proj/gn/scale                                                                           (1024,)                  float32
+decoder/up43/refine/conv/kernel                                                                      (3, 3, 1024, 1024)       float32
+decoder/up43/refine/gn/bias                                                                          (1024,)                  float32
+decoder/up43/refine/gn/scale                                                                         (1024,)                  float32
+encoder/conv1/kernel                                                                                 (3, 3, 4, 256)           float32
+encoder/gn1/bias                                                                                     (256,)                   float32
+encoder/gn1/scale                                                                                    (256,)                   float32
+encoder/layer1_norm/bias                                                                             (256,)                   float32
+encoder/layer1_norm/scale                                                                            (256,)                   float32
+encoder/layer2_norm/bias                                                                             (512,)                   float32
+encoder/layer2_norm/scale                                                                            (512,)                   float32
+encoder/layer3_norm/bias                                                                             (1024,)                  float32
+encoder/layer3_norm/scale                                                                            (1024,)                  float32
+encoder/layer4_norm/bias                                                                             (2048,)                  float32
+encoder/layer4_norm/scale                                                                            (2048,)                  float32
+encoder/stages_0/layers_0/conv1/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_0/conv2/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_0/gn1/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_0/gn1/scale                                                                  (256,)                   float32
+encoder/stages_0/layers_0/gn2/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_0/gn2/scale                                                                  (256,)                   float32
+encoder/stages_0/layers_1/conv1/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_1/conv2/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_1/gn1/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_1/gn1/scale                                                                  (256,)                   float32
+encoder/stages_0/layers_1/gn2/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_1/gn2/scale                                                                  (256,)                   float32
+encoder/stages_0/layers_2/conv1/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_2/conv2/kernel                                                               (3, 3, 256, 256)         float32
+encoder/stages_0/layers_2/gn1/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_2/gn1/scale                                                                  (256,)                   float32
+encoder/stages_0/layers_2/gn2/bias                                                                   (256,)                   float32
+encoder/stages_0/layers_2/gn2/scale                                                                  (256,)                   float32
+encoder/stages_1/layers_0/conv1/kernel                                                               (3, 3, 256, 512)         float32
+encoder/stages_1/layers_0/conv2/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_0/gn1/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_0/gn1/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_0/gn2/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_0/gn2/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_0/proj_conv/kernel                                                           (1, 1, 256, 512)         float32
+encoder/stages_1/layers_0/proj_gn/bias                                                               (512,)                   float32
+encoder/stages_1/layers_0/proj_gn/scale                                                              (512,)                   float32
+encoder/stages_1/layers_1/conv1/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_1/conv2/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_1/gn1/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_1/gn1/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_1/gn2/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_1/gn2/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_2/conv1/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_2/conv2/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_2/gn1/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_2/gn1/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_2/gn2/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_2/gn2/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_3/conv1/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_3/conv2/kernel                                                               (3, 3, 512, 512)         float32
+encoder/stages_1/layers_3/gn1/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_3/gn1/scale                                                                  (512,)                   float32
+encoder/stages_1/layers_3/gn2/bias                                                                   (512,)                   float32
+encoder/stages_1/layers_3/gn2/scale                                                                  (512,)                   float32
+encoder/stages_2/layers_0/conv1/kernel                                                               (3, 3, 512, 1024)        float32
+encoder/stages_2/layers_0/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_0/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_0/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_0/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_0/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_0/proj_conv/kernel                                                           (1, 1, 512, 1024)        float32
+encoder/stages_2/layers_0/proj_gn/bias                                                               (1024,)                  float32
+encoder/stages_2/layers_0/proj_gn/scale                                                              (1024,)                  float32
+encoder/stages_2/layers_1/conv1/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_1/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_1/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_1/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_1/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_1/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_2/conv1/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_2/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_2/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_2/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_2/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_2/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_3/conv1/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_3/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_3/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_3/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_3/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_3/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_4/conv1/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_4/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_4/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_4/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_4/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_4/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_5/conv1/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_5/conv2/kernel                                                               (3, 3, 1024, 1024)       float32
+encoder/stages_2/layers_5/gn1/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_5/gn1/scale                                                                  (1024,)                  float32
+encoder/stages_2/layers_5/gn2/bias                                                                   (1024,)                  float32
+encoder/stages_2/layers_5/gn2/scale                                                                  (1024,)                  float32
+encoder/stages_3/layers_0/conv1/kernel                                                               (3, 3, 1024, 2048)       float32
+encoder/stages_3/layers_0/conv2/kernel                                                               (3, 3, 2048, 2048)       float32
+encoder/stages_3/layers_0/gn1/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_0/gn1/scale                                                                  (2048,)                  float32
+encoder/stages_3/layers_0/gn2/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_0/gn2/scale                                                                  (2048,)                  float32
+encoder/stages_3/layers_0/proj_conv/kernel                                                           (1, 1, 1024, 2048)       float32
+encoder/stages_3/layers_0/proj_gn/bias                                                               (2048,)                  float32
+encoder/stages_3/layers_0/proj_gn/scale                                                              (2048,)                  float32
+encoder/stages_3/layers_1/conv1/kernel                                                               (3, 3, 2048, 2048)       float32
+encoder/stages_3/layers_1/conv2/kernel                                                               (3, 3, 2048, 2048)       float32
+encoder/stages_3/layers_1/gn1/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_1/gn1/scale                                                                  (2048,)                  float32
+encoder/stages_3/layers_1/gn2/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_1/gn2/scale                                                                  (2048,)                  float32
+encoder/stages_3/layers_2/conv1/kernel                                                               (3, 3, 2048, 2048)       float32
+encoder/stages_3/layers_2/conv2/kernel                                                               (3, 3, 2048, 2048)       float32
+encoder/stages_3/layers_2/gn1/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_2/gn1/scale                                                                  (2048,)                  float32
+encoder/stages_3/layers_2/gn2/bias                                                                   (2048,)                  float32
+encoder/stages_3/layers_2/gn2/scale                                                                  (2048,)                  float32
+fc/bias                                                                                              (1000,)                  float32
+fc/kernel                                                                                            (2048, 1000)             float32
+
+total params: 431,354,348

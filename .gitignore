@@ -3,3 +3,4 @@ data/
 wandb/
 __pycache__/
 *.pyc
+tests/parity/fixtures/
