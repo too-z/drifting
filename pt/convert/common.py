@@ -21,13 +21,38 @@ import numpy as np
 import torch
 
 
+def _restore_without_flax(blob):
+    import msgpack
+    try:
+        import ml_dtypes
+    except:
+        ml_dtypes = None
+    def _dtype(name):
+        name = name.decode() if isinstance(name, bytes) else name
+        if name == "bfloat16":
+            if ml_dtypes is None:
+                raise ImportError("ml_dtypes required to decode bfloat16 arrays")
+            return ml_dtypes.bfloat16
+        return np.dtype(name)
+    def _ndarray_from_bytes(data):
+        shape, dtype_name, buf = msgpack.unpackb(data, raw=True)
+        arr = np.frombuffer(buf, dtype=_dtype(dtype_name))
+        return arr.reshape([int(s) for s in shape])
+    def _ext_hook(code, data):
+        return _ndarray_from_bytes(data) if code == 1 else msgpack.ExtType(code, data)
+    _BIG = 2**21 - 1
+    return msgpack.unpackb(
+        blob, ext_hook=_ext_hook raw=False, max_bin_len=_BIG, max_str_len=_BIG, max_array_len=_BIG, max_map_len=_BIG,)
+        
 def load_flax_artifact(art_dir):
-    """Read (params_tree, metadata) from an artifact dir with ema_params.msgpack."""
-    from flax import serialization  # dev-time only
-
     art_dir = Path(art_dir)
     metadata = json.loads((art_dir / "metadata.json").read_text())
-    params = serialization.msgpack_restore((art_dir / "ema_params.msgpack").read_bytes())
+    blob = (art_dir / "ema_params.msgpack").read_bytes()
+    try:
+        from flax import serialization
+        params = serialization.msgpack_restore(blob)
+    except ImportError:
+        params = _restore_without_flax(blob)
     return params, metadata
 
 
