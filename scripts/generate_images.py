@@ -28,7 +28,7 @@ def parse_args(argv=None):
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--out", default="samples/out.png")
-    ap.add_argument("--save-individual", action="store_true)
+    ap.add_argument("--save-individual", action="store_true")
     ap.add_argument("--hf-root", default=None)
     return ap.parse_args(argv)
 
@@ -41,7 +41,7 @@ def generate(model, postprocess_fn, labels, cfg_scale, seed, batch_size, device)
         g = make_generator(device, "gen_images", seed, start)
         samples = model(c, cfg_scale=float(cfg_scale), generator=g)["samples"]
         pixels = postprocess_fn(samples)
-        pixcels = pixcels.float().clamp(0, 1).permute(0, 2, 3, 1).cpu().numpy()
+        pixels = pixels.float().clamp(0, 1).permute(0, 2, 3, 1).cpu().numpy()
         outs.append((pixels * 255).round().astype(np.uint8))
     return np.concatenate(outs, axis=0)
 
@@ -82,7 +82,7 @@ def main(argv=None):
         idir.mkdir(parents=True, exist_ok=True)
         for i, (lbl, img) in enumerate(zip(labels, images)):
             Image.fromarray(img).save(idir / f"class{lbl}_{i:04d}.png")
-        print(image.shape[0], idir)
+        print(images.shape[0], idir)
 
 
 if __name__ == "__main__":
