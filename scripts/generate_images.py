@@ -12,8 +12,8 @@ sys.path.insert(0, str(REPO))
 
 from pt.dataset.dataset import get_postprocess_fn
 from pt.utils import dist_util
-from pt_utils.init_util import load_generator_model_and_params
-from pt_utils.rng import make_generator
+from pt.utils.init_util import load_generator_model_and_params
+from pt.utils.rng import make_generator
 from utils.env import HF_ROOT
 
 def _is_latent(metadata: dict) -> bool:
