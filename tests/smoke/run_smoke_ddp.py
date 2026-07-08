@@ -51,11 +51,11 @@ def check_drift_loss_distributed():
         R_list=(0.2, 0.05, 0.02), distributed_stats=True,
     )
 
-    torch.testing.assert_close(loss, ref_loss[sl], rtol=1e-6, atol=1e-7)
+    torch.testing.assert_close(loss, ref_loss[sl], rtol=1e-4, atol=1e-5)
     for k in info:
-        torch.testing.assert_close(info[k], ref_info[k], rtol=1e-6, atol=1e-7)
+        torch.testing.assert_close(info[k], ref_info[k], rtol=1e-4, atol=1e-5)
     if rank == 0:
-        print("drift_loss distributed-stats exactness: OK")
+        print("drift_loss distributed-stats partiy(float32 reduction noise): OK")
 
 
 def run_mae_ddp(tmp: Path):
