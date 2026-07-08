@@ -42,7 +42,7 @@ def _restore_without_flax(blob):
         return _ndarray_from_bytes(data) if code == 1 else msgpack.ExtType(code, data)
     _BIG = 2**21 - 1
     return msgpack.unpackb(
-        blob, ext_hook=_ext_hook raw=False, max_bin_len=_BIG, max_str_len=_BIG, max_array_len=_BIG, max_map_len=_BIG,)
+        blob, ext_hook=_ext_hook, raw=False, max_bin_len=_BIG, max_str_len=_BIG, max_array_len=_BIG, max_map_len=_BIG,)
         
 def load_flax_artifact(art_dir):
     art_dir = Path(art_dir)
