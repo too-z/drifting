@@ -1,6 +1,6 @@
 """Convert a Flax generator artifact (ema_params.msgpack) to torch safetensors.
 
-Usage (needs flax installed — dev-time only):
+Usage (flax optional; pure-msgpack fallback used if flax is unavailable):
     python -m pt.convert.convert_generator --name ablation [--root ~/hf_cache]
 
 Reads  <root>/models/gen/jax/<name>/   (downloads from HF if missing)
