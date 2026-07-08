@@ -1,6 +1,6 @@
 """Convert a Flax MAE artifact (ema_params.msgpack) to torch safetensors.
 
-Usage (needs flax installed — dev-time only):
+Usage (flax optional; pure-msgpack fallback used if flax is unavailable):
     python -m pt.convert.convert_mae --name mae_latent_256 [--root ~/hf_cache]
 
 Reads  <root>/models/mae/jax/<name>/
@@ -60,7 +60,7 @@ def convert(name, root):
 
     model = mae_from_metadata(metadata)
     n = verify_against_module(state_dict, model, context=f"mae/{name}")
-    print(f"[{name}] converted {len(state_dict)} tensors, {n:,} params — all checks passed")
+    print(f"[{name}] converted {len(state_dict)} tensors, {n:,} params - all checks passed")
 
     out_dir = Path(root) / "models" / "mae" / "torch" / name
     save_torch_artifact(state_dict, metadata, out_dir, source_note=f"models/mae/jax/{name}")
