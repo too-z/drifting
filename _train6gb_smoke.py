@@ -1,13 +1,13 @@
 import sys
 from pathlib import Path
-REPO = r"C:\Users\wall.kim\works\research\drifting\drifting-main"
-BASE = r"C:\Users\wall.kim\works\research\drifting"
-sys.path.insert(0, REPO)
+REPO = PATH(__file__).resolve().parent
+BASE = REPO.parent
+sys.path.insert(0, str(REPO))
 
 from pt.utils.misc import load_config
 from utils import env
 
-env.IMAGENT_CACHE_PATH = fr"{BASE}\_sanity_cache"
+env.IMAGENT_CACHE_PATH = str(BASE / "_sanity_cache")
 
 import pt.train as train_mod
 
@@ -16,7 +16,7 @@ def _no_fid(*a, **k):
 
 train_mod.evaluate_fid = _no_fid
 
-cfg = load_config(str(Path(REPO) / "configs" / "gen" / "latent_ablation_6gb.yaml"))
+cfg = load_config(str(REPO / "configs" / "gen" / "latent_ablation_6gb.yaml"))
 
 cfg.dataset.batch_size = 16
 cfg.dataset.eval_batch_size = 16
@@ -33,5 +33,5 @@ cfg.feature.mae_path = "hf://mae_latent_256"
 
 from pt.train import main_gen
 
-main_gen(cfg, output_dir = fr"{BASE}\_train6gb_smoke_run")
+main_gen(cfg, output_dir = str(BASE / "_train6gb_smoke_run")
 print("\n6GB TRAIN SMOKE OK")
