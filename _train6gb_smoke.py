@@ -7,7 +7,7 @@ sys.path.insert(0, str(REPO))
 from pt.utils.misc import load_config
 from utils import env
 
-env.IMAGENT_CACHE_PATH = str(BASE / "_sanity_cache")
+env.IMAGENET_CACHE_PATH = str(REPO / "_sanity_cache")
 
 import pt.train as train_mod
 
