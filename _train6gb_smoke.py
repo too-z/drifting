@@ -33,5 +33,5 @@ cfg.feature.mae_path = "hf://mae_latent_256"
 
 from pt.train import main_gen
 
-main_gen(cfg, output_dir = str(BASE / "_train6gb_smoke_run")
+main_gen(cfg, output_dir = str(REPO / "_train6gb_smoke_run")
 print("\n6GB TRAIN SMOKE OK")
