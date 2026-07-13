@@ -4,7 +4,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent
 BASE = REPO.parent
 
-KAGGLE = (BASE / "imagenet-object-localization-challeng"
+KAGGLE = (BASE / "imagenet-object-localization-challenge"
           / "ILSVRC" / "Data" / "CLS-LOC" / "train")
 OUT = REPO / "_sanity_imagenet"
 N_CLASSES = 4
@@ -21,7 +21,7 @@ for wnid in wnids:
     dst = OUT / split / wnid
     dst.mkdir(parents=True, exist_ok=True)
     for src in imgs[sl]:
-      shutil.copy2(src, dts/src.name)
+      shutil.copy2(src, dst/src.name)
 
 print(f"classes: {wnids}")
 print(f"subset root: {OUT}")
