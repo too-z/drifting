@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-REPO = PATH(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent
 BASE = REPO.parent
 sys.path.insert(0, str(REPO))
 
