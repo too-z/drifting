@@ -1,0 +1,82 @@
+logging:
+  project: "drift-tabular"
+  entity: "YOUR_WANDB_ENTITY"
+  use_wandb: false
+  log_every_k: 10
+
+dataset:
+  type: tabular
+  name: indian_liver
+  num_classes: 2
+  batch_size: 128
+  eval_batch_size: 64
+  kwargs:
+    csv_path: "real-world/indian_liver_patient/indian_liver_patient_prep.csv"
+    target_col: "Label"
+    drop_cols: ["Domain"]
+    val_frac: 0.1
+    seed: 42
+    num_workers: 0
+    pin_memory: false
+
+model:
+  tabular: true
+  cond_dim: 128
+  input_size: 10
+  in_channels: 1
+  out_channels: 1
+  
+  hidden_size: 128 
+  depth: 6
+  num_heads: 4
+  mlp_ratio: 4.0
+  
+  use_qknorm: true
+  use_swiglu: true
+  use_rope: false
+  use_rmsnorm: true
+  n_cls_tokens: 8
+  noise_classes: 64
+  noise_coords: 32
+  use_bf16: false     # cpu friendly; fp32
+  attn_fp32: true
+
+optimizer:
+  lr_schedule:
+    learning_rate: 0.0002
+    warmup_steps: 200
+    lr_schedule: "const"
+    total_steps: 4000
+  weight_decay: 0.01
+  adam_b1: 0.9
+  adam_b2: 0.95
+
+train:
+  train_batch_size: 64
+  seed: 42
+  total_steps: 4000
+  save_per_step: 1000
+  keep_every: 100000
+  keep_last: 2
+  eval_per_step: 5000000 # stubbed
+  pos_per_sample: 32
+  neg_per_sample: 16
+  positive_bank_size: 128
+  negative_bank_size: 512
+  forward_dict:
+    gen_per_label: 16
+    cfg_min: 1.0
+    cfg_max: 4.0
+    neg_cfg_pw: 1.0
+  activation_kwargs:
+    use_std: false
+    use_mean: false
+  loss_kwargs:
+    R_list: [0.2, 0.05, 0.02]
+  cfg_list: [1.0]
+  ema_decay: 0.999
+  push_per_step: 64
+
+feature:
+  use_mae: false
+  use_convnext: false
