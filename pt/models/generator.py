@@ -303,7 +303,7 @@ class LightningDiT(nn.Module):
                  depth=28, num_heads=16, mlp_ratio=4.0, out_channels=32,
                  use_qknorm=False, use_swiglu=False, use_rope=False, use_rmsnorm=False,
                  cond_dim=None, n_cls_tokens=0, attn_fp32=True,
-                 compute_dtype=torch.float32, use_remat=False):
+                 compute_dtype=torch.float32, use_remat=False, tabular=False):
         super().__init__()
         self.input_size = input_size
         self.patch_size = patch_size
@@ -312,18 +312,24 @@ class LightningDiT(nn.Module):
         self.n_cls_tokens = n_cls_tokens
         self.compute_dtype = compute_dtype
         self.use_remat = use_remat
+        self.tabular = tabular
 
-        target_grid = input_size // patch_size
-        num_patches = target_grid * target_grid
-
-        # effective patch dim is data-dependent (effective_p); the Linear's
-        # in_features is fixed by the config as in Flax lazy init at trace time
-        # (pixel models pass H == input_size so effective_p == patch_size).
-        self.patch_embed = CastLinear(
-            patch_size * patch_size * in_channels, hidden_size, compute_dtype=compute_dtype
-        )
-        pe = get_2d_sincos_pos_embed(hidden_size, target_grid)
-        self.pos_embed = nn.Parameter(torch.from_numpy(pe).float()[None, :, :])
+        if tabular:
+            num_patches = input_size
+            self.patch_embed = CastLinear(in_channels, hidden_size, compute_dtype=compute_dtype)
+            self.pos_embed = nn.Parameter(torch.randn(1, num_patches, hidden_size) * 0.02)
+        else:
+            target_grid = input_size // patch_size
+            num_patches = target_grid * target_grid
+    
+            # effective patch dim is data-dependent (effective_p); the Linear's
+            # in_features is fixed by the config as in Flax lazy init at trace time
+            # (pixel models pass H == input_size so effective_p == patch_size).
+            self.patch_embed = CastLinear(
+                patch_size * patch_size * in_channels, hidden_size, compute_dtype=compute_dtype
+            )
+            pe = get_2d_sincos_pos_embed(hidden_size, target_grid)
+            self.pos_embed = nn.Parameter(torch.from_numpy(pe).float()[None, :, :])
 
         if n_cls_tokens > 0:
             self.cls_proj = CastLinear(cond_dim, hidden_size, compute_dtype=compute_dtype)
@@ -354,7 +360,30 @@ class LightningDiT(nn.Module):
             compute_dtype=compute_dtype,
         )
 
+    def _forward_tabular(self, x, c):
+        B, N, C = x.shape
+        x = self.patch_embed(x)
+        x = (x + self.pos_embed).to(self.comput_dtype)
+        if self.n_cls_tokens > 0:
+            c_in = c.to(self.compute_type)
+            c_tokens = self.cls_proj(c_in).unsqueeze(1).expand(-1, self.n_cls_tokens, -1)
+            c_tokens = (c_tokens + self.cls_embed).to(self.compute_dtype)
+            x = torch.cat([c_tokens, x.to(self.compute_dtype)], dim=1)
+
+        for block in self.blocks:
+            if self.use_remat and self.training and torch.is_grad_enabled():
+                x = torch.utils.checkpoint.checkpoint(block, x, c, use_reentrant=False)
+            else:
+                x = block(x, c)
+        x = self.final_layer(x, c)
+        if self.n_cls_tokens > 0:
+            x = x[:, self.n_cls_tokens:, :]
+        return x.reshape(B, N, self.out_channels)
+
+    
     def forward(self, x, c):
+        if self.tabular:
+            return self._forward_tabular(x, c)
         # x: [B, H, W, C] (BHWC, as in the Flax source)
         B, H, W, C = x.shape
         p = self.patch_size
@@ -443,7 +472,7 @@ class DitGen(nn.Module):
                  input_size=32, in_channels=3, n_cls_tokens=0, patch_size=2,
                  hidden_size=1152, depth=28, num_heads=16, mlp_ratio=4.0,
                  out_channels=3, use_qknorm=False, use_swiglu=False, use_rope=False,
-                 use_rmsnorm=False, use_bf16=False, attn_fp32=True, use_remat=False):
+                 use_rmsnorm=False, use_bf16=False, attn_fp32=True, use_remat=False, tabular=False):
         super().__init__()
         self.cond_dim = cond_dim
         self.num_classes = num_classes
@@ -451,7 +480,10 @@ class DitGen(nn.Module):
         self.noise_coords = noise_coords
         self.input_size = input_size
         self.in_channels = in_channels
+        self.tabular = tabular
         self.use_bf16 = use_bf16
+        if tabular:
+            patch_size = 1
         compute_dtype = torch.bfloat16 if use_bf16 else torch.float32
         self.compute_dtype = compute_dtype
 
@@ -486,6 +518,7 @@ class DitGen(nn.Module):
             attn_fp32=attn_fp32,
             compute_dtype=compute_dtype,
             use_remat=use_remat,
+            tabular=tabular,
         )
 
     def generate_image(self, x, cond):
@@ -530,10 +563,16 @@ class DitGen(nn.Module):
         device = c.device
 
         if noise is None:
-            noise = torch.randn(
-                B, self.input_size, self.input_size, self.in_channels,
-                device=device, generator=generator,
-            )
+            if self.tabular:
+                noise = torch.randn(
+                    B, self.input_size, self.in_channels,
+                    device=device, generator=generator,
+                )
+            else:
+                noise = torch.randn(
+                    B, self.input_size, self.input_size, self.in_channels,
+                    device=device, generator=generator,
+                )
         x = noise * temp
         if self.use_bf16:
             x = x.to(torch.bfloat16)
@@ -547,6 +586,11 @@ class DitGen(nn.Module):
         cond = self.c_cfg_noise_to_cond(c, cfg_scale, noise_labels)
         samples = self.generate_image(x, cond)  # BHWC
 
+        if self.tabular:
+            return {
+                "samples": samples.permute(0, 2, 1),
+                "noise": {"x": x, "noise_labels": noise_labels},
+            }
         return {
             "samples": samples.permute(0, 3, 1, 2),  # BCHW at the public boundary
             "noise": {"x": x, "noise_labels": noise_labels},
