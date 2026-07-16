@@ -12,8 +12,13 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
-from absl import logging as absl_logging
-from PIL import Image
+try:
+    from absl import logging as absl_logging
+except ModuleNotFoundError:
+    import logging as _py_logging
+    absl_logging = _py_logging.getLogger("pt")
+    if not absl_logging.handlers:
+      _py_logging.basicConfig(level=_py_logging.INFO)
 
 from pt.utils import dist_util
 
@@ -139,6 +144,8 @@ class WandbLogger:
 
     @staticmethod
     def _make_grid_image(images: np.ndarray, rows: int = 8) -> Image.Image:
+        from PIL import Image
+        
         rows = max(1, int(rows))
         pil_imgs = [Image.fromarray(img) for img in images]
         cols = max(1, int(math.ceil(len(pil_imgs) / rows)))
