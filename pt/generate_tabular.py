@@ -51,9 +51,9 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
   print("marginal comparison real vs generated")
   print("column real_mean gen_mean real_std gen_std")
   for c in feat_cols:
-    print(f"{c:10s} {real_df[c].mean():10.3f} {gen_df[c].mean():10.3f} "
+    print(f"{c:10s} {real_df[c].mean():10.3f} {gen_df[c].mean():10.3f}"
           f"{real_df[c].std():9.3f} {gen_df[c].std():9.3f}")
-    return gen_df
+  return gen_df
 
 def main():
   ap = argparse.ArgumentParser()

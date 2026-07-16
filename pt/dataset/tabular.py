@@ -123,9 +123,9 @@ def create_tabular_split(
 ):
   data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed)
   indices = data["train_idx"] if split == "train" else data["val_idx"]
-  ds = TabularDataset(data["X"], data["labels"], indices= data["mean"], data["std"])
+  ds = TabularDataset(data["X"], data["labels"], indices, data["mean"], data["std"])
   
-  rank = data_util.rank()
+  rank = dist_util.rank()
   sampler = DistributedSampler(ds, num_replicas=dist_util.world_size(), rank=rank, shuffle=True)
   loader = DataLoader(
     ds,

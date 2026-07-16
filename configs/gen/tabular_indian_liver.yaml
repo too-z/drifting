@@ -11,7 +11,7 @@ dataset:
   batch_size: 128
   eval_batch_size: 64
   kwargs:
-    csv_path: "real-world/indian_liver_patient/indian_liver_patient_prep.csv"
+    csv_path: "data/real-world/indian_liver_patient/indian_liver_patient_prep.csv"
     target_col: "Label"
     drop_cols: ["Domain"]
     val_frac: 0.1

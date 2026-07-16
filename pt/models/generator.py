@@ -363,9 +363,9 @@ class LightningDiT(nn.Module):
     def _forward_tabular(self, x, c):
         B, N, C = x.shape
         x = self.patch_embed(x)
-        x = (x + self.pos_embed).to(self.comput_dtype)
+        x = (x + self.pos_embed).to(self.compute_dtype)
         if self.n_cls_tokens > 0:
-            c_in = c.to(self.compute_type)
+            c_in = c.to(self.compute_dtype)
             c_tokens = self.cls_proj(c_in).unsqueeze(1).expand(-1, self.n_cls_tokens, -1)
             c_tokens = (c_tokens + self.cls_embed).to(self.compute_dtype)
             x = torch.cat([c_tokens, x.to(self.compute_dtype)], dim=1)

@@ -11,7 +11,7 @@ dataset:
   batch_size: 128
   eval_batch_size: 64
   kwargs:
-    csv_path: "real-world/cleveland_heart_disease/cleveland_heart_disease_prep.csv"
+    csv_path: "data/real-world/cleveland_heart_disease/cleveland_heart_disease_prep.csv"
     target_col: "Label"
     drop_cols: ["Domain"]
     val_frac: 0.1
