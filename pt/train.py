@@ -217,6 +217,7 @@ def train_gen(
     push_at_resume=3000,
     workdir="runs",
     model_config=None,
+    eval_fid=True,
 ):
     """Main training loop (torch port of train.py:train_gen)."""
     if isinstance(ema_decay, (list, tuple)):
@@ -270,7 +271,8 @@ def train_gen(
     log_for_0("Starting training loop...")
     initial_step = step
     pbar = tqdm(range(step, total_steps), initial=step, total=total_steps) if is_rank_zero() else range(step, total_steps)
-    memory_bank_positive = ArrayMemoryBank(num_classes=1000, max_size=positive_bank_size)
+    num_classes = int((model_config or {}).get("num_classes", 1000))
+    memory_bank_positive = ArrayMemoryBank(num_classes=num_classes, max_size=positive_bank_size)
     memory_bank_negative = ArrayMemoryBank(num_classes=1, max_size=negative_bank_size)
     dist_util.barrier("train loop started")
     train_iter = infinite_sampler(train_loader, step)
@@ -359,7 +361,7 @@ def train_gen(
             )
             dist_util.barrier("save checkpoint finished")
 
-        if (step % eval_per_step == 0) or (step == 1) or (step == total_steps):
+        if eval_fid and ((step % eval_per_step == 0) or (step == 1) or (step == total_steps)):
             is_sanity = (step == 1)  # sanity check that the FID env works
 
             n_samples = 500 if is_sanity else eval_samples
@@ -444,6 +446,11 @@ def main_gen(config, output_dir="runs"):
         use_mae=bool(feature_cfg.get("use_mae", True)),
         postprocess_fn=postprocess_fn_noclip,
     )
+
+    dataset_type = str(config.dataset.get("type", "imagenet")).lower()
+    train_kwargs = dict(config.train)
+    train_kwargs.setdefault("eval_fid", dataset_type != "tabular")
+    
     train_gen(
         model=model_dict.model,
         optimizer=model_dict.optimizer,
@@ -460,7 +467,7 @@ def main_gen(config, output_dir="runs"):
         # the dataset section); keep the torch metadata identical.
         model_config={**dict(config.model), "num_classes": config.dataset.num_classes},
         workdir=output_dir,
-        **config.train,
+        **train_kwargs,
     )
     dist_util.barrier("main_gen finished")
     del model_dict
