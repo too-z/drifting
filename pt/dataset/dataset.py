@@ -16,20 +16,16 @@ from functools import partial
 
 import numpy as np
 import torch
-from PIL import Image
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from torchvision import transforms
-from torchvision.datasets import ImageFolder
 
-from pt.dataset.latent import LatentDataset
-from pt.dataset.vae import vae_enc_decode
 from pt.utils import dist_util
 from utils import env  # paths read at call time so tests can override them
 
 
 def center_crop_arr(pil_image: Image.Image, image_size: int) -> Image.Image:
     """Center-crop image with ADM preprocessing style."""
+    from PIL import Image
     while min(*pil_image.size) >= 2 * image_size:
         pil_image = pil_image.resize(tuple(x // 2 for x in pil_image.size), resample=Image.BOX)
 
@@ -43,6 +39,7 @@ def center_crop_arr(pil_image: Image.Image, image_size: int) -> Image.Image:
 
 
 def _build_transforms(resolution: int, use_aug: bool, split: str):
+    from torchvision import transforms
     if use_aug and split == "train":
         return transforms.Compose(
             [
@@ -64,8 +61,10 @@ def _build_transforms(resolution: int, use_aug: bool, split: str):
 
 def _build_imagenet_dataset(*, resolution: int, use_aug: bool, use_cache: bool, split: str):
     if use_cache:
+        from pt.dataset.latent import LatentDataset
         return LatentDataset(root=os.path.join(env.IMAGENET_CACHE_PATH, split))
 
+    from torchvision.datasets import ImageFolder
     transform = _build_transforms(resolution, use_aug=use_aug, split=split)
     return ImageFolder(root=os.path.join(env.IMAGENET_PATH, split), transform=transform)
 
@@ -127,6 +126,7 @@ def create_imagenet_split(
     )
 
     if use_latent or use_cache:
+        from pt.dataset.vae import vae_enc_decode
         encode_fn, decode_fn = vae_enc_decode()
         if use_cache:
             def preprocess_fn(batch, generator=None):
@@ -162,6 +162,7 @@ def create_imagenet_split(
 def get_postprocess_fn(*, use_aug: bool = False, use_latent: bool = False, use_cache: bool = False, has_clip: bool = True):
     """Return postprocess function for generated samples by dataset mode flags."""
     if use_latent or use_cache:
+        from pt.dataset.vae import vae_enc_decode
         _, decode_fn = vae_enc_decode()
 
         def postprocess(images):
