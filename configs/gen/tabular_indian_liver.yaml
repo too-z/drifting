@@ -38,15 +38,16 @@ model:
   n_cls_tokens: 8
   noise_classes: 64
   noise_coords: 32
-  use_bf16: false     # cpu friendly; fp32
-  attn_fp32: true
+  use_bf16: false   # tabular runs on CPU in fp32; bf16 saves no memory here
+  attn_fp32: false  # inert once bf16 is off (attention is already fp32)
+  use_remat: false  # gradient checkpointing — unneeded for this tiny model
 
 optimizer:
   lr_schedule:
     learning_rate: 0.0002
     warmup_steps: 200
-    lr_schedule: "const"
-    total_steps: 4000
+    lr_schedule: "cosine"  # anneal LR to ~0 for a sharper final model (was "const")
+    total_steps: 4000      # matches train.total_steps so cosine decays over the real horizon
   weight_decay: 0.01
   adam_b1: 0.9
   adam_b2: 0.95
