@@ -92,20 +92,17 @@ def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed):
 
 class TabularDataset(Dataset):
   def __init__(self, X, labels, indices, mean, std):
-    self.X = X
-    self.labels = labels
-    self.indices = np.asarray(indices)
-    self.mean = mean
-    self.std = std
+    indices = np.asarray(indices)
+    self.indices = indices
+    self.X = ((np.asarray(X)[indices] - mean) / std).astype(np.float32)
+    self.labels = np.asarray(labels)[indices]
 
   def __len__(self) -> int:
     return len(self.indices)
 
   def __getitem__(self, i:int):
-    idx = int(self.indices[i])
-    x = (self.X[idx] - self.mean) / self.std
-    x = torch.from_numpy(np.ascontiguousarray(x)).float().unsqueeze(0) # [1, n_features]
-    y = int(self.labels[idx])
+    x = torch.from_numpy(np.ascontiguousarray(self.X[i])).float().unsqueeze(0) # [1, n_features]
+    y = int(self.labels[i])
     return x, y
 
 def create_tabular_split(
