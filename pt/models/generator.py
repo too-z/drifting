@@ -265,9 +265,11 @@ class LightningDiTBlock(nn.Module):
 
 class FinalLayer(nn.Module):
     def __init__(self, hidden_size, patch_size, out_channels, use_rmsnorm=False,
-                 cond_dim=None, compute_dtype=torch.float32):
+                 cond_dim=None, compute_dtype=torch.float32, tabular=False, num_features=None):
         super().__init__()
         self.compute_dtype = compute_dtype
+        self.tabular = tabular
+        self.num_features = num_features
         if use_rmsnorm:
             self.norm = RMSNorm(hidden_size)
         else:
@@ -277,15 +279,23 @@ class FinalLayer(nn.Module):
         nn.init.zeros_(self.adaLN[1].weight)
         nn.init.zeros_(self.adaLN[1].bias)
 
-        self.linear = CastLinear(
-            hidden_size, patch_size * patch_size * out_channels,
-            weight_init="zeros", compute_dtype=compute_dtype,
-        )
+        out_dim = patch_size * patch_size * out_channels
+        if tabular:
+            self.decoders = nn.ModuleList([
+                CastLinear(hidden_size, out_dim, weight_init="zeros", comput_dtype=compute_dtype) for _ in range(num_features)])
+        else:
+            self.linear = CastLinear(
+                hidden_size, out_dim,
+                weight_init="zeros", compute_dtype=compute_dtype,
+            )
 
     def forward(self, x, c):
         chunks = self.adaLN(c.float()).to(self.compute_dtype)
         shift, scale = chunks.chunk(2, dim=1)
         x = modulate(self.norm(x), shift, scale)
+        if self.tabular:
+            return torch.stack(
+                [self.decodes[i](x[:, i, :]) for i in range(self.num_features)], dim=1,)
         return self.linear(x)
 
 
@@ -316,7 +326,8 @@ class LightningDiT(nn.Module):
 
         if tabular:
             num_patches = input_size
-            self.patch_embed = CastLinear(in_channels, hidden_size, compute_dtype=compute_dtype)
+            self.num_features = num_patches
+            self.patch_embed = nn.ModuleList([CastLinear(in_channels, hidden_size, compute_dtype=compute_dtype) for _ in range(num_patches)])
             self.pos_embed = nn.Parameter(torch.randn(1, num_patches, hidden_size) * 0.02)
         else:
             target_grid = input_size // patch_size
@@ -358,11 +369,13 @@ class LightningDiT(nn.Module):
             use_rmsnorm=use_rmsnorm,
             cond_dim=cond_dim,
             compute_dtype=compute_dtype,
+            tabular=tabular,
+            num_features=num_patches if tabular else None,
         )
 
     def _forward_tabular(self, x, c):
         B, N, C = x.shape
-        x = self.patch_embed(x)
+        x = torch.stack([self.patch_embed[i](x[:,i,:]) for i in range(N)], dim=1)
         x = (x + self.pos_embed).to(self.compute_dtype)
         if self.n_cls_tokens > 0:
             c_in = c.to(self.compute_dtype)
@@ -375,9 +388,10 @@ class LightningDiT(nn.Module):
                 x = torch.utils.checkpoint.checkpoint(block, x, c, use_reentrant=False)
             else:
                 x = block(x, c)
-        x = self.final_layer(x, c)
+        # x = self.final_layer(x, c)
         if self.n_cls_tokens > 0:
             x = x[:, self.n_cls_tokens:, :]
+        x = self.final_layer(x, c)
         return x.reshape(B, N, self.out_channels)
 
     
