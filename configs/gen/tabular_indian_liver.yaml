@@ -14,6 +14,7 @@ dataset:
     csv_path: "data/real-world/indian_liver_patient/indian_liver_patient_prep.csv"
     target_col: "Label"
     drop_cols: ["Domain"]
+    categorical_cols: ["Gender"]
     val_frac: 0.1
     seed: 42
     num_workers: 0
@@ -38,6 +39,7 @@ model:
   n_cls_tokens: 8
   noise_classes: 64
   noise_coords: 32
+  cat_softmax: true
   use_bf16: false   # tabular runs on CPU in fp32; bf16 saves no memory here
   attn_fp32: false  # inert once bf16 is off (attention is already fp32)
   use_remat: false  # gradient checkpointing — unneeded for this tiny model
