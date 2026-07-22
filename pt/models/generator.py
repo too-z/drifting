@@ -265,11 +265,13 @@ class LightningDiTBlock(nn.Module):
 
 class FinalLayer(nn.Module):
     def __init__(self, hidden_size, patch_size, out_channels, use_rmsnorm=False,
-                 cond_dim=None, compute_dtype=torch.float32, tabular=False, num_features=None):
+                 cond_dim=None, compute_dtype=torch.float32, tabular=False, feature_dims=None, feature_kinds=None, cat_softmax=False):
         super().__init__()
         self.compute_dtype = compute_dtype
         self.tabular = tabular
-        self.num_features = num_features
+        self.feature_dims = list(feature_dims) if feature_dims is not None else None
+        self.feature_kinds = list(feature_kinds) if feature_kinds is not None else None
+        self.cat_softmax = bool(cat_softmax and tabular and self.feature_kinds is not None)
         if use_rmsnorm:
             self.norm = RMSNorm(hidden_size)
         else:
@@ -279,11 +281,12 @@ class FinalLayer(nn.Module):
         nn.init.zeros_(self.adaLN[1].weight)
         nn.init.zeros_(self.adaLN[1].bias)
 
-        out_dim = patch_size * patch_size * out_channels
+        
         if tabular:
             self.decoders = nn.ModuleList([
-                CastLinear(hidden_size, out_dim, weight_init="zeros", comput_dtype=compute_dtype) for _ in range(num_features)])
+                CastLinear(hidden_size, w, weight_init="zeros", comput_dtype=compute_dtype) for w in self.feature_dims])
         else:
+            out_dim = patch_size * patch_size * out_channels
             self.linear = CastLinear(
                 hidden_size, out_dim,
                 weight_init="zeros", compute_dtype=compute_dtype,
@@ -294,8 +297,15 @@ class FinalLayer(nn.Module):
         shift, scale = chunks.chunk(2, dim=1)
         x = modulate(self.norm(x), shift, scale)
         if self.tabular:
-            return torch.stack(
-                [self.decodes[i](x[:, i, :]) for i in range(self.num_features)], dim=1,)
+            if self.cat_softmax:
+                blocks = []
+                for i in range(len(self.decoders)):
+                    b = self.decoders[i](x[:, i,:])
+                    if self.feature_kinds[i] == "cat":
+                        b = torch.softmax(b.float(), dim=-1).to(b.dtype)
+                    blocks.append(b)
+                return torch.cat(blocks, dim=1)
+            return torch.cat([self.decoders[i](x[:, i, :]) for i in range(len(self.decoders))], dim=1)
         return self.linear(x)
 
 
@@ -313,7 +323,7 @@ class LightningDiT(nn.Module):
                  depth=28, num_heads=16, mlp_ratio=4.0, out_channels=32,
                  use_qknorm=False, use_swiglu=False, use_rope=False, use_rmsnorm=False,
                  cond_dim=None, n_cls_tokens=0, attn_fp32=True,
-                 compute_dtype=torch.float32, use_remat=False, tabular=False):
+                 compute_dtype=torch.float32, use_remat=False, tabular=False, feature_dims=None, feature_kinds=None, cat_softmax=False):
         super().__init__()
         self.input_size = input_size
         self.patch_size = patch_size
@@ -325,9 +335,17 @@ class LightningDiT(nn.Module):
         self.tabular = tabular
 
         if tabular:
-            num_patches = input_size
-            self.num_features = num_patches
-            self.patch_embed = nn.ModuleList([CastLinear(in_channels, hidden_size, compute_dtype=compute_dtype) for _ in range(num_patches)])
+            if feature_dims is None:
+                feature_dims = [in_channels] * input_size
+            self.feature_dims = [int(w) for w in feature_dims]
+            self.num_features = len(self.feature_dims)
+            self.data_dim = int(sum(self.feature_dims))
+            offs = [0]
+            for w in self.feature_dims:
+                offs.append(offs[-1] + w)
+            self.feature_offsets = offs
+            num_patches = self.num_features
+            self.patch_embed = nn.ModuleList([CastLinear(w, hidden_size, compute_dtype=compute_dtype) for w in self.feature_dims])
             self.pos_embed = nn.Parameter(torch.randn(1, num_patches, hidden_size) * 0.02)
         else:
             target_grid = input_size // patch_size
@@ -370,12 +388,16 @@ class LightningDiT(nn.Module):
             cond_dim=cond_dim,
             compute_dtype=compute_dtype,
             tabular=tabular,
-            num_features=num_patches if tabular else None,
+            feature_dims = self.feature_dims if tabular else None,
+            feature_kinds = feature_kinds if tabular else None,
+            cat_softmax = cat_softmax,
         )
 
     def _forward_tabular(self, x, c):
-        B, N, C = x.shape
-        x = torch.stack([self.patch_embed[i](x[:,i,:]) for i in range(N)], dim=1)
+        B = x.shape[0]
+        x = x.reshape(B, self.data_dim)
+        offs = self.feature_offsets 
+        x = torch.stack([self.patch_embed[i](x[:,offs[i]:offs[i+1]]) for i in range(self.num_features)], dim=1)
         x = (x + self.pos_embed).to(self.compute_dtype)
         if self.n_cls_tokens > 0:
             c_in = c.to(self.compute_dtype)
@@ -391,8 +413,7 @@ class LightningDiT(nn.Module):
         # x = self.final_layer(x, c)
         if self.n_cls_tokens > 0:
             x = x[:, self.n_cls_tokens:, :]
-        x = self.final_layer(x, c)
-        return x.reshape(B, N, self.out_channels)
+        return self.final_layer(x, c)
 
     
     def forward(self, x, c):
@@ -486,7 +507,7 @@ class DitGen(nn.Module):
                  input_size=32, in_channels=3, n_cls_tokens=0, patch_size=2,
                  hidden_size=1152, depth=28, num_heads=16, mlp_ratio=4.0,
                  out_channels=3, use_qknorm=False, use_swiglu=False, use_rope=False,
-                 use_rmsnorm=False, use_bf16=False, attn_fp32=True, use_remat=False, tabular=False):
+                 use_rmsnorm=False, use_bf16=False, attn_fp32=True, use_remat=False, tabular=False, feature_dims=None, feature_kinds=None, cat_softmax=False):
         super().__init__()
         self.cond_dim = cond_dim
         self.num_classes = num_classes
@@ -514,6 +535,21 @@ class DitGen(nn.Module):
         self.cfg_embedder = TimestepEmbedder(cond_dim, compute_dtype=compute_dtype)
         self.cfg_norm = RMSNorm(cond_dim)
 
+        if tabular:
+            if feature_dims is None:
+                feature_dims = [in_channels] * input_size
+            self.feature_dims = [int(w) for w in feature_dims]
+            self.data_dim = int(sum(self.feature_dims))
+            if feature_kinds is None:
+                feature_kinds = ["cont"] * len(self.feature_dims)
+            self.feature_kinds = list(feature_kinds)
+            self.cat_softmax = bool(cat_softmax)
+        else:
+            self.feature_dims = None
+            self.data_dim = None
+            self.feature_kinds = None
+            self.cat_softmax = False
+
         self.model = LightningDiT(
             input_size=input_size,
             patch_size=patch_size,
@@ -533,6 +569,9 @@ class DitGen(nn.Module):
             compute_dtype=compute_dtype,
             use_remat=use_remat,
             tabular=tabular,
+            feature_dims = self.feature_dims,
+            feature_kinds = self.feature_kinds,
+            cat_softmax = self.cat_softmax,
         )
 
     def generate_image(self, x, cond):
@@ -579,7 +618,7 @@ class DitGen(nn.Module):
         if noise is None:
             if self.tabular:
                 noise = torch.randn(
-                    B, self.input_size, self.in_channels,
+                    B, self.data_dim,
                     device=device, generator=generator,
                 )
             else:
@@ -598,11 +637,11 @@ class DitGen(nn.Module):
             )
 
         cond = self.c_cfg_noise_to_cond(c, cfg_scale, noise_labels)
-        samples = self.generate_image(x, cond)  # BHWC
+        samples = self.generate_image(x, cond)
 
         if self.tabular:
             return {
-                "samples": samples.permute(0, 2, 1),
+                "samples": samples.unsqueeze(1),
                 "noise": {"x": x, "noise_labels": noise_labels},
             }
         return {
