@@ -19,10 +19,11 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
   csv_path = ds_kwargs["csv_path"]
   target_col = ds_kwargs.get("target_col", "Lable")
   drop_cols = list(ds_kwargs.get("drop_cols", ["Domain"]))
+  categorical_cols = list(ds_kwargs.get("categorical_cols", []))
   val_frac = float(ds_kwargs.get("val_frac", 0.1))
   ds_seed = int(ds_kwargs.get("seed", 42))
 
-  data = _load_tabular(csv_path, target_col, drop_cols, val_frac, ds_seed)
+  data = _load_tabular(csv_path, target_col, drop_cols, val_frac, ds_seed, tuple(categorical_cols))
   feat_cols = data["feat_cols"]
   num_classes = data["num_classes"]
 
@@ -31,15 +32,15 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
   model = model.to(device).eval()
   print(metadata.get("step"), getattr(model, 'tabular', False))
 
-  postprocess = get_tabular_postprocess_fn(csv_path = csv_path, target_col=target_col, drop_cols=drop_cols, val_frac=val_frac, seed=ds_seed)
+  postprocess = get_tabular_postprocess_fn(csv_path = csv_path, target_col=target_col, drop_cols=drop_cols, val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols))
   real_labels = data["labels"]
   p = np.bincount(real_labels, minlength=num_classes) / len(real_labels)
   rng = np.random.default_rng(seed)
   labels = torch.from_numpy(rng.choice(num_classes, size=n, p=p)).long().to(device)
 
   g = make_generator(device, "generate-tabular", seed)
-  samples = model(labels, cfg_scale=float(cfg_scale), generator=g)["samples"] # [n, 1, F]
-  table = postprocess(samples).squeeze(1).cpu().numpy()
+  samples = model(labels, cfg_scale=float(cfg_scale), generator=g)["samples"] # [n, 1, data_dim]
+  table = postprocess(samples).squeeze(1).cpu().numpy() # [n, n_features], decoded
 
   gen_df = pd.DataFrame(table, columns=feat_cols)
   gen_df[target_col] = labels.cpu().numpy()
