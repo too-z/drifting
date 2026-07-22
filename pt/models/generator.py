@@ -284,7 +284,7 @@ class FinalLayer(nn.Module):
         
         if tabular:
             self.decoders = nn.ModuleList([
-                CastLinear(hidden_size, w, weight_init="zeros", comput_dtype=compute_dtype) for w in self.feature_dims])
+                CastLinear(hidden_size, w, weight_init="zeros", compute_dtype=compute_dtype) for w in self.feature_dims])
         else:
             out_dim = patch_size * patch_size * out_channels
             self.linear = CastLinear(

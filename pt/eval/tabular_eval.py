@@ -51,7 +51,7 @@ def correlation_difference(real_df, gen_df, feat_cols):
   g = gen_df[feat_cols].to_numpy(dtype=np.float64)
   with np.errstate(invalid="ignore", divide="ignore"):
     cr = np.corrcoef(r, rowvar=False)
-    cr = np.corrcoef(g, rowvar=False)
+    cg = np.corrcoef(g, rowvar=False)
   cr = np.nan_to_num(cr)
   cg = np.nan_to_num(cg)
   return float(np.linalg.norm(cr - cg, ord="fro"))
@@ -69,21 +69,21 @@ def c2st_auc(real_df, gen_df, feat_cols, n_splits=5, n_repeats=3, seed=0):
   for rep in range(n_repeats):
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed + rep)
     for tr, te in skf.split(X, y):
-      clf = GraidentBoostingClassifier(random_state=seed+rep)
+      clf = GradientBoostingClassifier(random_state=seed+rep)
       clf.fit(X[tr], y[tr])
       if len(np.unique(y[te])) < 2:
         continue
       prob = clf.predict_proba(X[te])[:, 1]
       aucs.append(roc_auc_score(y[te], prob))
   return {
-    "c2st_auc_mean": float(np.mean(auc)) if aucs else float("nan"),
-    "c2st_auc_std": float(np.std(auc)) if aucs else float("nan"),
+    "c2st_auc_mean": float(np.mean(aucs)) if aucs else float("nan"),
+    "c2st_auc_std": float(np.std(aucs)) if aucs else float("nan"),
   }
  
 def tstr(real_df, gen_df, feat_cols, target_col, seed=0):
   from sklearn.model_selection import train_test_split
-  ry = real_df[target_col.to_numpy().astype(int)
-  rX = real_df[feat_cols].to_nump(dtype=np.float64)
+  ry = real_df[target_col].to_numpy().astype(int)
+  rX = real_df[feat_cols].to_numpy(dtype=np.float64)
   rX, ry = _drop_nonfinite(rX, ry, label="tstr real")
   if len(np.unique(ry)) < 2:
     return {"tstr_auc": float("nan"), "trtr_auc": float("nan")}
@@ -95,37 +95,37 @@ def tstr(real_df, gen_df, feat_cols, target_col, seed=0):
   gX, gy = _drop_nonfinite(gX, gy, label="tstr gen")
 
   def _auc(Xtr, y_tr):
-    if len(np.unique(ytr)) < 2:
+    if len(np.unique(y_tr)) < 2:
       return float("nan")
     cls = GradientBoostingClassifier(random_state=seed)
-    cls.fit(Xtr, ytr)
+    cls.fit(Xtr, y_tr)
     prob = cls.predict_proba(rX_te)[:, 1]
     return float(roc_auc_score(ry_te, prob))
 
-  return {"tstr_auc": _auc(gX, gy), "trtr_auc": __auc(rX_tr, ry_tr)}
+  return {"tstr_auc": _auc(gX, gy), "trtr_auc": _auc(rX_tr, ry_tr)}
 
 
 def evaluate_tabular(real_df, gen_df, feat_cols, cat_cols, target_col=None, seed=0, verbose=True):
-results = {}
-marg_summary, per_col = marginal_metrics(real_df, gen_df, feat_cols, cat_cols)
-results.update(marg_summary)
-results["corr_diff_fro"] = correlation_difference(real_df, gen_df, feat_cols)
-results.update(c2st_auc(real_df, gen_df, feat_cols, seed=seed))
-if target_col is not none and target_col in real_df and target_col in gen_df:
-results.update(tstr(reael_df, gen_df, feat_cols, target_col, seed=seed))
+  results = {}
+  marg_summary, per_col = marginal_metrics(real_df, gen_df, feat_cols, cat_cols)
+  results.update(marg_summary)
+  results["corr_diff_fro"] = correlation_difference(real_df, gen_df, feat_cols)
+  results.update(c2st_auc(real_df, gen_df, feat_cols, seed=seed))
+  if target_col is not None and target_col in real_df and target_col in gen_df:
+    results.update(tstr(real_df, gen_df, feat_cols, target_col, seed=seed))
 
-if verbose:
-  print("\n=== tabular evaluation (real vs generated) ===")
-  print(f"  marginal W1 (continuous, standardized) mean: {results['marginal_w1_mean']:.4f}")
-  print(f"  marginal TV (categorical)              mean: {results['marginal__v_mean']:.4f}")
-  print(f"  corr matrix Frobenius diff                 : {results['corr_diff_fro']:.4f}")
-  print(f"  C2ST AUX (0.0=indistinguishable)           : {results['c2st_auc_mean']:.4f} +/- {results['c2st_auc_std']:.4f}]")
-  if "tstr_auc" in results:
-    print(f"  TSTR AUC (train-synth/test-real)         :  {results['tstr_auc']:.4f}"
-          f" +/- {results['c2st_auc_std']:.4f}")
-  print("  per-column marginal distances:")
-  for c in feat_cols:
-    kind = "TV " if c in set(cat_cols) else "W1 "
-    print(f"    {c:28s} {kind}{per_cols[c]:.4f}")
-  results["_per_column"] = per_col
-  return results
+  if verbose:
+    print("\n=== tabular evaluation (real vs generated) ===")
+    print(f"  marginal W1 (continuous, standardized) mean: {results['marginal_w1_mean']:.4f}")
+    print(f"  marginal TV (categorical)              mean: {results['marginal_tv_mean']:.4f}")
+    print(f"  corr matrix Frobenius diff                 : {results['corr_diff_fro']:.4f}")
+    print(f"  C2ST AUX (0.0=indistinguishable)           : {results['c2st_auc_mean']:.4f} +/- {results['c2st_auc_std']:.4f}]")
+    if "tstr_auc" in results:
+      print(f"  TSTR AUC (train-synth/test-real)         :  {results['tstr_auc']:.4f}"
+            f" +/- {results['c2st_auc_std']:.4f}")
+    print("  per-column marginal distances:")
+    for c in feat_cols:
+      kind = "TV " if c in set(cat_cols) else "W1 "
+      print(f"    {c:28s} {kind}{per_col[c]:.4f}")
+    results["_per_column"] = per_col
+    return results

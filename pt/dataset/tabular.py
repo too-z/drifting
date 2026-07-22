@@ -55,8 +55,8 @@ def _build_features(X_full, train_idx, feat_cols, categorical_cols):
         "name": col, "col": j, "kind": "cat", "levels": levels, "width": len(levels),})
     else:
       with np.errstate(invalid="ignore"):
-        m = np.nanmean(train_X[:, j]])
-        s = np.nanstd(train_X[:, j]])
+        m = np.nanmean(train_X[:, j])
+        s = np.nanstd(train_X[:, j])
       m = float(m) if np.isfinite(m) else 0.0
       s = float(s) if (np.isfinite(s) and s >= 1e-6) else 1.0
       features.append({
@@ -170,7 +170,8 @@ class TabularDataset(Dataset):
   def __init__(self, X_enc, labels, indices):
     indices = np.asarray(indices)
     self.indices = indices
-    self.X = ((np.asarray(X)[indices] - mean) / std).astype(np.float32)
+    # self.X = ((np.asarray(X_enc)[indices] - mean) / std).astype(np.float32)
+    self.X = np.asarray(X_enc)[indices].astype(np.float32)
     self.labels = np.asarray(labels)[indices]
 
   def __len__(self) -> int:
