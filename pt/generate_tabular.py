@@ -6,14 +6,14 @@ import numpy as np
 import pandas as pd
 import torch
 
-from pt.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
+from pt.dataset.tabular import _decode, _load_tabular, get_tabular_postprocess_fn
 from pt.utils.init_util import load_generator_model_and_params
 from pt.utils.misc import load_config
 from pt.utils.rng import make_generator
 from utils import env
 
 @torch.no_grad()
-def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
+def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True):
   config = load_config(config_path)
   ds_kwargs = dict(config.dataset.get("kwargs", {}))
   csv_path = ds_kwargs["csv_path"]
@@ -32,7 +32,7 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
   model = model.to(device).eval()
   print(metadata.get("step"), getattr(model, 'tabular', False))
 
-  postprocess = get_tabular_postprocess_fn(csv_path = csv_path, target_col=target_col, drop_cols=drop_cols, val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols))
+  postprocess = get_tabular_postprocess_fn(csv_path = csv_path, target_col=target_col, drop_cols=drop_cols, val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols), cat_temperature=cat_temperature, decode_seed=seed)
   real_labels = data["labels"]
   p = np.bincount(real_labels, minlength=num_classes) / len(real_labels)
   rng = np.random.default_rng(seed)
@@ -48,12 +48,17 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv):
     gen_df.to_csv(out_csv, index=False)
     print(f"wrote {len(gen_df)} generated rows")
 
+  real_table = _decode(data["X_enc"], data["features"])
   real_df = pd.DataFrame(data["X"], columns=feat_cols)
+  real_df[target_col] = real_labels
   print("marginal comparison real vs generated")
   print("column real_mean gen_mean real_std gen_std")
   for c in feat_cols:
     print(f"{c:10s} {real_df[c].mean():10.3f} {gen_df[c].mean():10.3f}"
           f"{real_df[c].std():9.3f} {gen_df[c].std():9.3f}")
+  if do_eval:
+    from pt.eval.tabular_eval import evaluate_tabular
+    evaluate_tabular(real_df, gen_df, feat_cols, cat_cols=categorical_cols, target_col=target_col, seed=seed, verbose=True)
   return gen_df
 
 def main():
@@ -64,8 +69,10 @@ def main():
   ap.add_argument("--cfg", type=float, default=1.0)
   ap.add_argument("--seed", type=int, default=0)
   ap.add_argument("--out", default="")
+  ap.add_argument("--cat-temp", type=float, default=0.0)
+  ap.add_argument("--no-eval", action="store_true")
   args = ap.parse_args()
-  generate(args.artifact, args.config, args.n, args.cfg, args.seed, args.out)
+  generate(args.artifact, args.config, args.n, args.cfg, args.seed, args.out, cat_temperature=args.cat_temp, do_eval=not args.no_eval)
 
 if __name__ == "__main__":
   main()
