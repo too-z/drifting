@@ -39,6 +39,7 @@ model:
   n_cls_tokens: 8
   noise_classes: 64
   noise_coords: 32
+  cat_softmax: true
   use_bf16: false   # tabular runs on CPU in fp32; bf16 saves no memory here
   attn_fp32: false  # inert once bf16 is off (attention is already fp32)
   use_remat: false  # gradient checkpointing — unneeded for this tiny model
