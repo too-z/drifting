@@ -14,6 +14,7 @@ dataset:
     csv_path: "data/real-world/cleveland_heart_disease/cleveland_heart_disease_prep.csv"
     target_col: "Label"
     drop_cols: ["Domain"]
+    categorical_cols: ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
     val_frac: 0.1
     seed: 42
     num_workers: 0     # tiny in-memory dataset feeds host-side banks; workers are pure overhead
