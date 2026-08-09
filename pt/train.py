@@ -155,6 +155,73 @@ def train_step(
     return dist_util.all_reduce_mean(metric)
 
 
+def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
+    """Periodic fidelity/utility eval for tabular runs — the FID hook's analogue.
+
+    Returns eval_fn(gen_module, step) -> dict of scalars. Fidelity metrics use
+    the train split (what the memory banks were filled from); TSTR/TRTR are
+    scored on the held-out val split.
+    """
+    import pandas as pd
+
+    from pt.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
+    from pt.eval.tabular_eval import evaluate_tabular
+
+    ds_kwargs = dict(config.dataset.get("kwargs", {}))
+    cfg_eval = dict(overrides)
+    n_samples = int(cfg_eval.get("n_samples", 1000))
+    cfg_scale = float(cfg_eval.get("cfg_scale", 1.0))
+    c2st_repeats = int(cfg_eval.get("c2st_repeats", 1))
+    cat_temperature = float(cfg_eval.get("cat_temperature", 0.0))
+    decode_clip = bool(cfg_eval.get("decode_clip", False))
+    decode_round = bool(cfg_eval.get("decode_round", False))
+
+    target_col = ds_kwargs.get("target_col", "Label")
+    drop_cols = list(ds_kwargs.get("drop_cols", ["Domain"]))
+    categorical_cols = list(ds_kwargs.get("categorical_cols", []))
+    cont_transform = str(ds_kwargs.get("cont_transform", "zscore"))
+    val_frac = float(ds_kwargs.get("val_frac", 0.1))
+    ds_seed = int(ds_kwargs.get("seed", 42))
+
+    data = _load_tabular(ds_kwargs["csv_path"], target_col, drop_cols, val_frac, ds_seed,
+                         tuple(categorical_cols), cont_transform)
+    feat_cols = data["feat_cols"]
+    postprocess = get_tabular_postprocess_fn(
+        csv_path=ds_kwargs["csv_path"], target_col=target_col, drop_cols=drop_cols,
+        val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols),
+        cont_transform=cont_transform, cat_temperature=cat_temperature,
+        decode_seed=seed, clip=decode_clip, round_int=decode_round,
+    )
+
+    train_idx, val_idx = data["train_idx"], data["val_idx"]
+    real_df = pd.DataFrame(data["X"][train_idx], columns=feat_cols)
+    real_df[target_col] = data["labels"][train_idx]
+    val_df = pd.DataFrame(data["X"][val_idx], columns=feat_cols)
+    val_df[target_col] = data["labels"][val_idx]
+
+    num_classes = data["num_classes"]
+    train_labels = data["labels"][train_idx]
+    label_p = np.bincount(train_labels, minlength=num_classes) / len(train_labels)
+
+    @torch.no_grad()
+    def eval_fn(gen_module, step):
+        rng = np.random.default_rng(seed + int(step))
+        labels_np = rng.choice(num_classes, size=n_samples, p=label_p)
+        labels = torch.from_numpy(labels_np).long().to(device)
+        g = make_generator(device, "tabular-eval", seed, int(step))
+        samples = gen_module(labels, cfg_scale=cfg_scale, generator=g)["samples"]
+        table = postprocess(samples).squeeze(1).cpu().numpy()
+        gen_df = pd.DataFrame(table, columns=feat_cols)
+        gen_df[target_col] = labels_np
+        res = evaluate_tabular(
+            real_df, gen_df, feat_cols, cat_cols=categorical_cols, target_col=target_col,
+            real_test_df=val_df, seed=seed, verbose=False, c2st_repeats=c2st_repeats,
+        )
+        return {k: v for k, v in res.items() if not k.startswith("_")}
+
+    return eval_fn
+
+
 def make_gen_step(gen_module, postprocess_fn, device):
     """FID generation callable following the pt.utils.fid_util contract:
     gen_step(batch, rng=<int>, cfg_scale=<float>) -> [0,1] BCHW."""
@@ -218,6 +285,7 @@ def train_gen(
     workdir="runs",
     model_config=None,
     eval_fid=True,
+    tabular_eval_fn=None,
 ):
     """Main training loop (torch port of train.py:train_gen)."""
     if isinstance(ema_decay, (list, tuple)):
@@ -270,6 +338,7 @@ def train_gen(
 
     log_for_0("Starting training loop...")
     initial_step = step
+    best_c2st = float("inf")
     pbar = tqdm(range(step, total_steps), initial=step, total=total_steps) if is_rank_zero() else range(step, total_steps)
     num_classes = int((model_config or {}).get("num_classes", 1000))
     memory_bank_positive = ArrayMemoryBank(num_classes=num_classes, max_size=positive_bank_size)
@@ -394,6 +463,24 @@ def train_gen(
                 log_for_0("best_fid=%.4f best_cfg=%.1f (step=%d)", round_best_fid, round_best_cfg, step)
                 logger.log_dict({"best_fid": round_best_fid, "best_cfg": round_best_cfg})
 
+        if tabular_eval_fn is not None and ((step % eval_per_step == 0) or (step == total_steps)):
+            module.eval()
+            if is_rank_zero():
+                res = tabular_eval_fn(get_ema_module(), step)
+                c2st = res.get("c2st_auc_mean", float("nan"))
+                if np.isfinite(c2st):
+                    best_c2st = min(best_c2st, c2st)
+                    res["best_c2st"] = best_c2st
+                log_for_0(
+                    "step=%d c2st=%.4f w1=%.4f tv=%.4f corr=%.4f tstr=%.4f trtr=%.4f",
+                    step, c2st, res.get("marginal_w1_mean", float("nan")),
+                    res.get("marginal_tv_mean", float("nan")),
+                    res.get("corr_diff_fro", float("nan")),
+                    res.get("tstr_auc", float("nan")), res.get("trtr_auc", float("nan")),
+                )
+                logger.log_dict({f"tab/{k}": v for k, v in res.items()})
+            dist_util.barrier("tabular eval finished")
+
         if step % 100 == 0:
             dist_util.barrier(f"train step {step} finished")
 
@@ -450,7 +537,15 @@ def main_gen(config, output_dir="runs"):
     dataset_type = str(config.dataset.get("type", "imagenet")).lower()
     train_kwargs = dict(config.train)
     train_kwargs.setdefault("eval_fid", dataset_type != "tabular")
-    
+    tabular_eval_cfg = dict(train_kwargs.pop("tabular_eval", {}) or {})
+    tabular_eval_fn = None
+    if dataset_type == "tabular" and tabular_eval_cfg.get("enabled", True):
+        tabular_eval_cfg.pop("enabled", None)
+        tabular_eval_fn = build_tabular_eval_fn(
+            config, dist_util.device(),
+            seed=int(train_kwargs.get("seed", 42)), **tabular_eval_cfg,
+        )
+
     train_gen(
         model=model_dict.model,
         optimizer=model_dict.optimizer,
@@ -467,6 +562,7 @@ def main_gen(config, output_dir="runs"):
         # the dataset section); keep the torch metadata identical.
         model_config={**dict(config.model), "num_classes": config.dataset.num_classes},
         workdir=output_dir,
+        tabular_eval_fn=tabular_eval_fn,
         **train_kwargs,
     )
     dist_util.barrier("main_gen finished")

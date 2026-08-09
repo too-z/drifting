@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from scipy.stats import wasserstein_distance
@@ -8,17 +10,40 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+_warned: set = set()
+
+def _warn_once(msg):
+  """The eval hook runs every eval_per_step; a per-message guard keeps the
+  identical 'dropped N non-finite' notice from flooding the training log."""
+  if msg not in _warned:
+    _warned.add(msg)
+    warnings.warn(msg)
+
 def _tv_distance(a, b, levels):
   pa = np.array([np.mean(a == lv) for lv in levels], dtype=np.float64)
   pb = np.array([np.mean(b == lv) for lv in levels], dtype=np.float64)
   return 0.5 * float(np.abs(pa - pb).sum())
 
+def _finite(v, label=""):
+  """Drop non-finite entries of a 1-D column.
+
+  The generator can never emit NaN (missing values are imputed at encode
+  time), so a NaN in the real column would poison the whole distance. Compare
+  the *observed* real values instead — that is the distribution the model was
+  actually asked to fit.
+  """
+  v = np.asarray(v, dtype=np.float64)
+  mask = np.isfinite(v)
+  n_drop = int((~mask).sum())
+  if n_drop:
+    _warn_once(f"tabular_eval: {label}: dropped {n_drop} non-finite values")
+  return v[mask]
+
 def _drop_nonfinite(X, y=None, label=""):
   mask = np.isfinite(X).all(axis=1)
   n_drop = int((~mask).sum())
   if n_drop:
-    import warnings
-    warnings.warn(f"tabular_evl: dropped {n_drop} rows with non finite")
+    _warn_once(f"tabular_eval: {label}: dropped {n_drop} rows with non finite")
   if y is None:
     return X[mask]
   return X[mask], y[mask]
@@ -28,8 +53,11 @@ def marginal_metrics(real_df, gen_df, feat_cols, cat_cols):
   cat_set = set(cat_cols)
   out = {}
   for c in feat_cols:
-    r = real_df[c].to_numpy()
-    g = gen_df[c].to_numpy()
+    r = _finite(real_df[c].to_numpy(), label=f"real[{c}]")
+    g = _finite(gen_df[c].to_numpy(), label=f"gen[{c}]")
+    if len(r) == 0 or len(g) == 0:
+      out[c] = ("tv" if c in cat_set else "w1", float("nan"))
+      continue
     if c in cat_set:
       levels = np.unique(r)
       out[c] = ("tv", _tv_distance(r, g, levels))
@@ -37,21 +65,25 @@ def marginal_metrics(real_df, gen_df, feat_cols, cat_cols):
       sd = r.std()
       sd = sd if sd > 1e-8 else 1.0
       out[c] = ("w1", float(wasserstein_distance(r / sd, g / sd)))
-  cont = [v for _, v in ((k, v) for k, (t, v) in out.items() if t == "w1")]
-  cats = [v for _, v in ((k, v) for k, (t, v) in out.items() if t == "tv")]
+
+  cont = [v for (t, v) in out.values() if t == "w1" and np.isfinite(v)]
+  cats = [v for (t, v) in out.values() if t == "tv" and np.isfinite(v)]
 
   summary = {
-    "marginal_w1_mean": float(np.mean(cont)) if cont else 0.0,
-    "marginal_tv_mean": float(np.mean(cats)) if cats else 0.0,
+    "marginal_w1_mean": float(np.mean(cont)) if cont else float("nan"),
+    "marginal_tv_mean": float(np.mean(cats)) if cats else float("nan"),
   }
   return summary, {c: v for c, (t, v) in out.items()}
 
 def correlation_difference(real_df, gen_df, feat_cols):
-  r = real_df[feat_cols].to_numpy(dtype=np.float64)
-  g = gen_df[feat_cols].to_numpy(dtype=np.float64)
+  r = _drop_nonfinite(real_df[feat_cols].to_numpy(dtype=np.float64), label="corr real")
+  g = _drop_nonfinite(gen_df[feat_cols].to_numpy(dtype=np.float64), label="corr gen")
+  if len(r) < 2 or len(g) < 2:
+    return float("nan")
   with np.errstate(invalid="ignore", divide="ignore"):
     cr = np.corrcoef(r, rowvar=False)
     cg = np.corrcoef(g, rowvar=False)
+  # constant columns give undefined correlation; treat as 0 in both matrices
   cr = np.nan_to_num(cr)
   cg = np.nan_to_num(cg)
   return float(np.linalg.norm(cr - cg, ord="fro"))
@@ -79,20 +111,38 @@ def c2st_auc(real_df, gen_df, feat_cols, n_splits=5, n_repeats=3, seed=0):
     "c2st_auc_mean": float(np.mean(aucs)) if aucs else float("nan"),
     "c2st_auc_std": float(np.std(aucs)) if aucs else float("nan"),
   }
- 
-def tstr(real_df, gen_df, feat_cols, target_col, seed=0):
+
+def tstr(real_df, gen_df, feat_cols, target_col, real_test_df=None, seed=0):
+  """TSTR / TRTR on a common test set.
+
+  real_df is the split the generator was fit on. When real_test_df is given
+  (the held-out split) both classifiers are scored on it, so neither the
+  generator nor the TRTR baseline has seen the test rows. Without it we fall
+  back to a 70/30 split of real_df — those test rows were in the generator's
+  memory bank, which inflates TSTR.
+  """
   from sklearn.model_selection import train_test_split
   ry = real_df[target_col].to_numpy().astype(int)
   rX = real_df[feat_cols].to_numpy(dtype=np.float64)
   rX, ry = _drop_nonfinite(rX, ry, label="tstr real")
   if len(np.unique(ry)) < 2:
-    return {"tstr_auc": float("nan"), "trtr_auc": float("nan")}
+    return {"tstr_auc": float("nan"), "trtr_auc": float("nan"), "tstr_n_test": 0}
 
-  rX_tr, rX_te, ry_tr, ry_te = train_test_split(rX, ry, test_size=0.3, random_state=seed, stratify=ry)
+  if real_test_df is not None and len(real_test_df) > 0:
+    rX_tr, ry_tr = rX, ry
+    rX_te = real_test_df[feat_cols].to_numpy(dtype=np.float64)
+    ry_te = real_test_df[target_col].to_numpy().astype(int)
+    rX_te, ry_te = _drop_nonfinite(rX_te, ry_te, label="tstr real test")
+  else:
+    _warn_once("tabular_eval: no held-out test split given; TSTR falls back to an in-sample split")
+    rX_tr, rX_te, ry_tr, ry_te = train_test_split(rX, ry, test_size=0.3, random_state=seed, stratify=ry)
 
   gX = gen_df[feat_cols].to_numpy(dtype=np.float64)
   gy = gen_df[target_col].to_numpy().astype(int)
   gX, gy = _drop_nonfinite(gX, gy, label="tstr gen")
+
+  if len(np.unique(ry_te)) < 2:
+    return {"tstr_auc": float("nan"), "trtr_auc": float("nan"), "tstr_n_test": len(ry_te)}
 
   def _auc(Xtr, y_tr):
     if len(np.unique(y_tr)) < 2:
@@ -102,30 +152,35 @@ def tstr(real_df, gen_df, feat_cols, target_col, seed=0):
     prob = cls.predict_proba(rX_te)[:, 1]
     return float(roc_auc_score(ry_te, prob))
 
-  return {"tstr_auc": _auc(gX, gy), "trtr_auc": _auc(rX_tr, ry_tr)}
+  return {"tstr_auc": _auc(gX, gy), "trtr_auc": _auc(rX_tr, ry_tr), "tstr_n_test": int(len(ry_te))}
 
 
-def evaluate_tabular(real_df, gen_df, feat_cols, cat_cols, target_col=None, seed=0, verbose=True):
+def evaluate_tabular(real_df, gen_df, feat_cols, cat_cols, target_col=None, real_test_df=None,
+                     seed=0, verbose=True, c2st_splits=5, c2st_repeats=3):
   results = {}
   marg_summary, per_col = marginal_metrics(real_df, gen_df, feat_cols, cat_cols)
   results.update(marg_summary)
   results["corr_diff_fro"] = correlation_difference(real_df, gen_df, feat_cols)
-  results.update(c2st_auc(real_df, gen_df, feat_cols, seed=seed))
+  results.update(c2st_auc(real_df, gen_df, feat_cols, n_splits=c2st_splits,
+                          n_repeats=c2st_repeats, seed=seed))
   if target_col is not None and target_col in real_df and target_col in gen_df:
-    results.update(tstr(real_df, gen_df, feat_cols, target_col, seed=seed))
+    results.update(tstr(real_df, gen_df, feat_cols, target_col,
+                        real_test_df=real_test_df, seed=seed))
+  results["_per_column"] = per_col
 
   if verbose:
+    n_test = results.get("tstr_n_test", 0)
     print("\n=== tabular evaluation (real vs generated) ===")
+    print(f"  n_real={len(real_df)} n_gen={len(gen_df)} n_test={n_test}")
     print(f"  marginal W1 (continuous, standardized) mean: {results['marginal_w1_mean']:.4f}")
     print(f"  marginal TV (categorical)              mean: {results['marginal_tv_mean']:.4f}")
     print(f"  corr matrix Frobenius diff                 : {results['corr_diff_fro']:.4f}")
-    print(f"  C2ST AUX (0.0=indistinguishable)           : {results['c2st_auc_mean']:.4f} +/- {results['c2st_auc_std']:.4f}]")
+    print(f"  C2ST AUC (0.5=indistinguishable)           : {results['c2st_auc_mean']:.4f} +/- {results['c2st_auc_std']:.4f}")
     if "tstr_auc" in results:
-      print(f"  TSTR AUC (train-synth/test-real)         :  {results['tstr_auc']:.4f}"
-            f" +/- {results['c2st_auc_std']:.4f}")
+      print(f"  TSTR AUC (train-synth / test-real)         : {results['tstr_auc']:.4f}")
+      print(f"  TRTR AUC (train-real  / test-real)         : {results['trtr_auc']:.4f}")
     print("  per-column marginal distances:")
     for c in feat_cols:
       kind = "TV " if c in set(cat_cols) else "W1 "
       print(f"    {c:28s} {kind}{per_col[c]:.4f}")
-    results["_per_column"] = per_col
-    return results
+  return results

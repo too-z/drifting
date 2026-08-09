@@ -7,6 +7,7 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import torch
+from scipy.special import ndtr, ndtri
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 
@@ -43,7 +44,50 @@ def _resolve_csv_path(csv_path: str) -> str:
   raise FileNotFoundError("tabular csv not found")
 
 
-def _build_features(X_full, train_idx, feat_cols, categorical_cols):
+def _fit_quantile(vals):
+  """Empirical CDF of the training values, deduplicated over ties.
+
+  Returns (unique_values, mean_cdf_position) — the two interpolation tables
+  used by the rank-gauss transform in both directions.
+  """
+  v = np.sort(np.asarray(vals, dtype=np.float64))
+  m = v.shape[0]
+  p = (np.arange(m) + 0.5) / m
+  ux, inv = np.unique(v, return_inverse=True)
+  up = np.bincount(inv, weights=p) / np.bincount(inv)
+  return ux, up
+
+
+def _snap_to_support(v, support):
+  """Round each value to the nearest value the column actually takes.
+
+  Real tables live on a coarse, column-specific value set (ages are integers,
+  bilirubin comes in 0.1 steps, A/G ratio is mostly 0.1 with a few 0.01
+  entries). A generator emitting arbitrary floats is trivially separable from
+  that by any tree-based critic, so the decoder snaps back onto the observed
+  support. Snapping to a fixed decimal grid instead would get columns with
+  mixed precision wrong.
+  """
+  if support.size < 2:
+    return np.full_like(v, float(support[0]) if support.size else 0.0)
+  idx = np.clip(np.searchsorted(support, v), 1, support.size - 1)
+  left, right = support[idx - 1], support[idx]
+  return np.where(np.abs(v - left) <= np.abs(right - v), left, right)
+
+
+def _build_features(X_full, train_idx, feat_cols, categorical_cols, cont_transform="zscore"):
+  """Per-column encoding schema, fitted on the training rows only.
+
+  cont_transform:
+    "zscore"   — affine standardization; preserves skew and heavy tails.
+    "quantile" — rank-gauss: empirical CDF then the normal quantile function,
+                 so every continuous marginal becomes ~N(0,1). The inverse
+                 interpolates back through the same table, which also confines
+                 decoded values to the observed training range.
+  """
+  cont_transform = str(cont_transform).lower()
+  if cont_transform not in ("zscore", "quantile"):
+    raise ValueError(f"unknown cont_transform: {cont_transform}")
   cat_set = set(categorical_cols)
   train_X = X_full[train_idx]
   features = []
@@ -54,22 +98,72 @@ def _build_features(X_full, train_idx, feat_cols, categorical_cols):
       features.append({
         "name": col, "col": j, "kind": "cat", "levels": levels, "width": len(levels),})
     else:
+      obs = train_X[:, j]
+      obs = obs[np.isfinite(obs)]
       with np.errstate(invalid="ignore"):
         m = np.nanmean(train_X[:, j])
         s = np.nanstd(train_X[:, j])
       m = float(m) if np.isfinite(m) else 0.0
       s = float(s) if (np.isfinite(s) and s >= 1e-6) else 1.0
-      features.append({
-        "name": col, "col": j, "kind": "cont", "mean": m, "std": s, "width": 1,})
+      f = {
+        "name": col, "col": j, "kind": "cont", "mean": m, "std": s, "width": 1,
+        "transform": cont_transform,
+        "vmin": float(obs.min()) if obs.size else 0.0,
+        "vmax": float(obs.max()) if obs.size else 0.0,
+        # value set the column actually takes, for decode-time snapping
+        "support": np.unique(obs).astype(np.float64),
+      }
+      if cont_transform == "quantile":
+        if obs.size >= 2:
+          ux, up = _fit_quantile(obs)
+        else:
+          ux, up = np.asarray([m], dtype=np.float64), np.asarray([0.5])
+        f["q_x"], f["q_p"] = ux, up
+      features.append(f)
   return features
+
+
+def _cont_forward(v, f):
+  """Raw column values -> encoded (NaN maps to the column centre, i.e. 0)."""
+  v = np.asarray(v, dtype=np.float64)
+  finite = np.isfinite(v)
+  out = np.zeros_like(v, dtype=np.float64)
+  if f.get("transform", "zscore") == "quantile":
+    ux, up = f["q_x"], f["q_p"]
+    if ux.size < 2:
+      return out.astype(np.float32)
+    p = np.interp(v[finite], ux, up)
+    out[finite] = ndtri(np.clip(p, up[0], up[-1]))
+  else:
+    out[finite] = (v[finite] - f["mean"]) / f["std"]
+  return out.astype(np.float32)
+
+
+def _cont_inverse(z, f, clip=False, round_grid=False):
+  """Encoded column -> raw values."""
+  z = np.asarray(z, dtype=np.float64)
+  if f.get("transform", "zscore") == "quantile":
+    ux, up = f["q_x"], f["q_p"]
+    if ux.size < 2:
+      out = np.full_like(z, float(ux[0]))
+    else:
+      p = np.clip(ndtr(z), up[0], up[-1])
+      out = np.interp(p, up, ux)
+  else:
+    out = z * f["std"] + f["mean"]
+  if clip:
+    out = np.clip(out, f["vmin"], f["vmax"])
+  if round_grid:
+    out = _snap_to_support(out, f["support"])
+  return out
+
 
 def _encode(X, features):
   parts = []
   for f in features:
     v = X[:, f["col"]]
     if f["kind"] == "cont":
-      vv = np.where(np.isnan(v), f["mean"], v)
-      parts.append(((vv - f["mean"]) / f["std"]).reshape(-1, 1).astype(np.float32))
+      parts.append(_cont_forward(v, f).reshape(-1, 1).astype(np.float32))
     else:
       oh = np.zeros((len(v), f["width"]), dtype=np.float32)
       for li, lev in enumerate(f["levels"]):
@@ -77,7 +171,7 @@ def _encode(X, features):
       parts.append(oh)
   return np.concatenate(parts, axis=1).astype(np.float32)
 
-def _decode(flat, features, cat_temperature=0.0, rng=None):
+def _decode(flat, features, cat_temperature=0.0, rng=None, clip=False, round_grid=False):
   flat = np.asarray(flat, dtype=np.float32)
   flat = flat.reshape(-1, flat.shape[-1])
   out = np.empty((flat.shape[0], len(features)), dtype=np.float32)
@@ -89,7 +183,7 @@ def _decode(flat, features, cat_temperature=0.0, rng=None):
     sl = flat[:, off:off+w]
     off += w
     if f["kind"] == "cont":
-      out[:, k] = sl[:, 0] * f["std"] + f["mean"]
+      out[:, k] = _cont_inverse(sl[:, 0], f, clip=clip, round_grid=round_grid)
     else:
       if cat_temperature and cat_temperature > 0:
         logits = sl / float(cat_temperature)
@@ -106,9 +200,11 @@ def _decode(flat, features, cat_temperature=0.0, rng=None):
       out[:, k] = levels[idx]
   return out
 
-def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_cols=()):
+def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_cols=(),
+                  cont_transform="zscore"):
   csv_path = _resolve_csv_path(csv_path)
-  key = (os.path.abspath(csv_path), target_col, tuple(sorted(drop_cols)), float(val_frac), int(seed), tuple(sorted(categorical_cols)),)
+  key = (os.path.abspath(csv_path), target_col, tuple(sorted(drop_cols)), float(val_frac),
+         int(seed), tuple(sorted(categorical_cols)), str(cont_transform),)
   if key in _tabular_cache:
     return _tabular_cache[key]
 
@@ -130,7 +226,7 @@ def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_c
   val_idx = perm[:n_val]
   train_idx = perm[n_val:]
 
-  features = _build_features(X, train_idx, feat_cols, categorical_cols)
+  features = _build_features(X, train_idx, feat_cols, categorical_cols, cont_transform)
   feature_dims = [f["width"] for f in features]
   feature_kinds = [f["kind"] for f in features]
   X_enc = _encode(X, features)
@@ -155,8 +251,8 @@ def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_c
   _tabular_cache[key] = result
   return result
 
-def get_tabular_schema(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), **_ignored):
-  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols))
+def get_tabular_schema(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", **_ignored):
+  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   return {
     "feature_dims": list(data["feature_dims"]),
     "feature_kinds": list(data["feature_kinds"]),
@@ -190,13 +286,14 @@ def create_tabular_split(
   target_col: str = "Label",
   drop_cols=("Domain",),
   categorical_cols=(),
+  cont_transform: str = "zscore",
   val_frac: float = 0.1,
   seed: int = 42,
   num_workers: int = 0,
   prefetch_factor: int = 2,
   pin_memory: bool = False,
 ):
-  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols))
+  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   indices = data["train_idx"] if split == "train" else data["val_idx"]
   ds = TabularDataset(data["X_enc"], data["labels"], indices)
   
@@ -226,13 +323,13 @@ def create_tabular_split(
   
   return loader, preprocess_fn, postprocess_fn
 
-def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cat_temperature=0.0, decode_seed=None):
-  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols))
+def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, decode_seed=None, clip=False, round_grid=False, **_ignored):
+  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   features = data["features"]
   rng = np.random.default_rng(decode_seed) if decode_seed is not None else None
 
   def postprocess(samples):
-    return torch.from_numpy(_decode(samples.detach().cpu().numpy(), features, cat_temperature=cat_temperature, rng=rng,)).float()
+    return torch.from_numpy(_decode(samples.detach().cpu().numpy(), features, cat_temperature=cat_temperature, rng=rng, clip=clip, round_grid=round_grid,)).float()
 
   return postprocess
 

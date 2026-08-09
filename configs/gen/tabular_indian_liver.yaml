@@ -15,6 +15,7 @@ dataset:
     target_col: "Label"
     drop_cols: ["Domain"]
     categorical_cols: ["Gender"]
+    cont_transform: "quantile"  # zscore | quantile (rank-gauss); quantile removes the heavy-tail skew
     val_frac: 0.1
     seed: 42
     num_workers: 0
@@ -61,7 +62,14 @@ train:
   save_per_step: 1000
   keep_every: 100000
   keep_last: 2
-  eval_per_step: 5000000 # stubbed
+  eval_per_step: 500        # drives the tabular eval hook (FID eval is off for tabular)
+  tabular_eval:
+    enabled: true
+    n_samples: 1000
+    cfg_scale: 1.0
+    c2st_repeats: 1         # 1 repeat x 5 folds keeps the in-training hook cheap
+    decode_clip: true       # decode exactly as pt.generate_tabular does, otherwise the
+    decode_round: true      # discretization artifact dominates C2ST and hides real progress
   pos_per_sample: 32
   neg_per_sample: 16
   positive_bank_size: 128
