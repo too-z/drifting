@@ -44,12 +44,13 @@ class ArrayMemoryBank:
             if self.count[lbl] < self.max_size:
                 self.count[lbl] += 1
 
-    def sample(self, labels, n_samples: int) -> np.ndarray:
+    def sample(self, labels, n_samples: int, rng=None) -> np.ndarray:
         """Sample stored entries for each label.
 
         Args:
             labels: integer class labels of shape ``(B,)``.
             n_samples: number of samples to draw per label.
+            rng: numpy Generator for the draws
 
         Returns:
             np.ndarray of shape ``(B, n_samples, *feature_shape)``.
@@ -57,6 +58,7 @@ class ArrayMemoryBank:
         if self.bank is None or self.feature_shape is None:
             raise RuntimeError("MemoryBank is empty. Call add() before sample().")
 
+        draw = np.random if rng is None else rng
         labels = np.asarray(labels)
         bsz = labels.shape[0]
         sample_indices = np.empty((bsz, n_samples), dtype=np.int32)
@@ -66,7 +68,7 @@ class ArrayMemoryBank:
             if valid <= 0:
                 sample_indices[i] = np.zeros((n_samples,), dtype=np.int32)
             else:
-                sample_indices[i] = np.random.choice(valid, n_samples, replace=(valid < n_samples))
+                sample_indices[i] = draw.choice(valid, n_samples, replace=(valid < n_samples))
 
         out = self.bank[labels[:, None], sample_indices]
         return out
