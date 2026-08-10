@@ -16,6 +16,7 @@ dataset:
     drop_cols: ["Domain"]
     categorical_cols: ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
     cont_transform: "quantile"  # zscore | quantile (rank-gauss); quantile removes the heavy-tail skew
+    cat_smooth: 0.15 # dequantization
     val_frac: 0.1
     seed: 42
     num_workers: 0     # tiny in-memory dataset feeds host-side banks; workers are pure overhead
