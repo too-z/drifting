@@ -173,8 +173,8 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     cfg_scale = float(cfg_eval.get("cfg_scale", 1.0))
     c2st_repeats = int(cfg_eval.get("c2st_repeats", 1))
     cat_temperature = float(cfg_eval.get("cat_temperature", 0.0))
-    decode_clip = bool(cfg_eval.get("decode_clip", False))
-    decode_round = bool(cfg_eval.get("decode_round", False))
+    decode_clip = bool(cfg_eval.get("decode_clip", True))
+    decode_round = bool(cfg_eval.get("decode_round", True))
 
     target_col = ds_kwargs.get("target_col", "Label")
     drop_cols = list(ds_kwargs.get("drop_cols", ["Domain"]))
@@ -190,7 +190,7 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
         csv_path=ds_kwargs["csv_path"], target_col=target_col, drop_cols=drop_cols,
         val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols),
         cont_transform=cont_transform, cat_temperature=cat_temperature,
-        decode_seed=seed, clip=decode_clip, round_int=decode_round,
+        decode_seed=seed, clip=decode_clip, round_grid=decode_round,
     )
 
     train_idx, val_idx = data["train_idx"], data["val_idx"]
