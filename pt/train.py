@@ -388,8 +388,9 @@ def train_gen(
         select_indices = rng_sel.choice(labels_np.shape[0], bsz_per_rank, replace=False)
         labels_np = labels_np[select_indices]
 
-        positive_samples = memory_bank_positive.sample(labels_np, n_samples=pos_per_sample)
-        negative_samples = memory_bank_negative.sample(labels_np * 0, n_samples=neg_per_sample)
+        rng_bank = np.random.Generator(np.random.PCG64(fold(seed, "bank", step, dist_util.rank())))        
+        positive_samples = memory_bank_positive.sample(labels_np, n_samples=pos_per_sample, rng=rng_bank)
+        negative_samples = memory_bank_negative.sample(labels_np * 0, n_samples=neg_per_sample, rng=rng_bank)
 
         labels = torch.from_numpy(labels_np).long().to(device)
         positive_samples = torch.from_numpy(positive_samples).to(device)
