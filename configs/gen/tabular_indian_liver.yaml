@@ -16,6 +16,7 @@ dataset:
     drop_cols: ["Domain"]
     categorical_cols: ["Gender"]
     cont_transform: "quantile"  # zscore | quantile (rank-gauss); quantile removes the heavy-tail skew
+    cat_smooth: 0.01 # dequantization
     val_frac: 0.1
     seed: 42
     num_workers: 0
