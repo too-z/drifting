@@ -323,7 +323,7 @@ def create_tabular_split(
   
   return loader, preprocess_fn, postprocess_fn
 
-def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, decode_seed=None, clip=False, round_grid=False, **_ignored):
+def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, decode_seed=None, clip=False, round_grid=False):
   data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   features = data["features"]
   rng = np.random.default_rng(decode_seed) if decode_seed is not None else None
