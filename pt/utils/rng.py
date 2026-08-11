@@ -28,3 +28,10 @@ def make_generator(device, *parts) -> torch.Generator:
     g = torch.Generator(device=device)
     g.manual_seed(fold(*parts))
     return g
+
+def seed_param_init(seed, *parts) -> None:
+    s = fold(seed, "params", *parts)
+    torch.manual_seed(s)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(s)
+   
