@@ -158,7 +158,10 @@ def _cont_inverse(z, f, clip=False, round_grid=False):
   return out
 
 
-def _encode(X, features):
+def _encode(X, features, cat_smooth=0.0):
+  cat_smooth = float(cat_smooth)
+  if not 0.0 <= cat_smooth < 1.0:
+    raise ValueError(f"cat_smooth must be in [0, 1), got{cat_smooth}")
   parts = []
   for f in features:
     v = X[:, f["col"]]
@@ -168,6 +171,8 @@ def _encode(X, features):
       oh = np.zeros((len(v), f["width"]), dtype=np.float32)
       for li, lev in enumerate(f["levels"]):
         oh[:, li] = (v == lev)
+      if cat_smooth > 0.0:
+        oh = (1.0 - cat_smooth) * oh + cat_smooth / f["width"]
       parts.append(oh)
   return np.concatenate(parts, axis=1).astype(np.float32)
 
@@ -201,10 +206,10 @@ def _decode(flat, features, cat_temperature=0.0, rng=None, clip=False, round_gri
   return out
 
 def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_cols=(),
-                  cont_transform="zscore"):
+                  cont_transform="zscore", cat_smooth=0.0):
   csv_path = _resolve_csv_path(csv_path)
   key = (os.path.abspath(csv_path), target_col, tuple(sorted(drop_cols)), float(val_frac),
-         int(seed), tuple(sorted(categorical_cols)), str(cont_transform),)
+         int(seed), tuple(sorted(categorical_cols)), str(cont_transform), float(cat_smooth),)
   if key in _tabular_cache:
     return _tabular_cache[key]
 
@@ -229,13 +234,14 @@ def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_c
   features = _build_features(X, train_idx, feat_cols, categorical_cols, cont_transform)
   feature_dims = [f["width"] for f in features]
   feature_kinds = [f["kind"] for f in features]
-  X_enc = _encode(X, features)
+  X_enc = _encode(X, features, cat_smooth=cat_smooth)
 
   n_missing = int(np.isnan(X).sum())
 
   result = {
     "X": X,
-    "X_enc": X_enc,  
+    "X_enc": X_enc,
+    "cat_smooth": float(cat_smooth),  
     "labels": labels,
     "feat_cols": feat_cols,
     "features": features,
@@ -251,8 +257,8 @@ def _load_tabular(csv_path, target_col, drop_cols, val_frac, seed, categorical_c
   _tabular_cache[key] = result
   return result
 
-def get_tabular_schema(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", **_ignored):
-  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
+def get_tabular_schema(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_smooth=0.0, **_ignored):
+  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform, cat_smooth)
   return {
     "feature_dims": list(data["feature_dims"]),
     "feature_kinds": list(data["feature_kinds"]),
@@ -287,13 +293,14 @@ def create_tabular_split(
   drop_cols=("Domain",),
   categorical_cols=(),
   cont_transform: str = "zscore",
+  cat_smooth: float = 0.0,
   val_frac: float = 0.1,
   seed: int = 42,
   num_workers: int = 0,
   prefetch_factor: int = 2,
   pin_memory: bool = False,
 ):
-  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
+  data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform, cat_smooth)
   indices = data["train_idx"] if split == "train" else data["val_idx"]
   ds = TabularDataset(data["X_enc"], data["labels"], indices)
   
