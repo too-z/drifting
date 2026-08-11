@@ -15,6 +15,7 @@ from pt.dataset.dataset import create_imagenet_split
 from pt.utils import dist_util
 from pt.utils.logging import WandbLogger
 from pt.utils.misc import EasyDict
+from pt.utils.rng import seed_param_init
 
 
 def create_learning_rate_fn(
@@ -61,7 +62,9 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
         config.model["feature_dims"] = list(schema["feature_dims"])
         config.model["feature_kinds"] = list(schema["feature_kinds"])
         config.model["input_size"] = len(schema["feature_dims"])
- 
+
+    seed_param_init(int(config.train.get("seed", 42))) 
+
     print("Building model...")
     model = model_class(
         num_classes=config.dataset.num_classes,
