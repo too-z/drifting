@@ -15,7 +15,8 @@ from utils import env
 
 @torch.no_grad()
 def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
-             real_split="train", decode_clip=False, decode_round=False, metrics_out=""):
+             real_split="train", decode_clip=False, decode_round=False, metrics_out="",
+             c2st_clf="gb", c2st_repeats=3, include_target=True):
   config = load_config(config_path)
   ds_kwargs = dict(config.dataset.get("kwargs", {}))
   csv_path = ds_kwargs["csv_path"]
@@ -80,15 +81,19 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
     results = evaluate_tabular(real_df, gen_df, feat_cols, cat_cols=categorical_cols,
                                target_col=target_col,
                                real_test_df=None if real_split == "val" else val_df,
-                               seed=seed, verbose=True)
+                               seed=seed, verbose=True, c2st_clf=c2st_clf,
+                               c2st_repeats=c2st_repeats, include_target=include_target)
     if metrics_out:
       payload = {k: v for k, v in results.items() if not k.startswith("_")}
       payload["_per_column"] = results.get("_per_column", {})
+      payload["_per_column_by_kind"] = results.get("_per_column_by_kind", {})
+      payload["_eval_columns"] = results.get("_eval_columns", [])
       payload["config"] = {"artifact": artifact, "config": config_path, "n": n,
                            "cfg": cfg_scale, "seed": seed, "cont_transform": cont_transform,
                            "cat_temperature": cat_temperature, "real_split": real_split,
                            "decode_clip": decode_clip, "decode_round": decode_round,
-                           "step": metadata.get("step")}
+                           "c2st_clf": c2st_clf, "include_target": include_target,
+                           "val_frac": val_frac, "step": metadata.get("step")}
       with open(metrics_out, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
       print(f"wrote metrics -> {metrics_out}")
@@ -110,12 +115,19 @@ def main():
   ap.add_argument("--decode-round", action="store_true",
                   help="snap decoded values onto the observed value grid (e.g. integers, 0.1 steps)")
   ap.add_argument("--metrics-out", default="", help="write evaluation results as JSON")
+  ap.add_argument("--c2st-clf", default="gb", choices=["gb", "logreg"],
+                  help="C2ST critic: gb (strong, CDTD/TabCascade-like) or logreg (TabSyn/TabDiff)")
+  ap.add_argument("--c2st-repeats", type=int, default=3)
+  ap.add_argument("--no-target-in-joint", action="store_true",
+                  help="score the feature block only; by default the label is one more column")
   ap.add_argument("--no-eval", action="store_true")
   args = ap.parse_args()
   generate(args.artifact, args.config, args.n, args.cfg, args.seed, args.out,
            cat_temperature=args.cat_temp, do_eval=not args.no_eval,
            real_split=args.real_split, decode_clip=args.decode_clip,
-           decode_round=args.decode_round, metrics_out=args.metrics_out)
+           decode_round=args.decode_round, metrics_out=args.metrics_out,
+           c2st_clf=args.c2st_clf, c2st_repeats=args.c2st_repeats,
+           include_target=not args.no_target_in_joint)
 
 if __name__ == "__main__":
   main()

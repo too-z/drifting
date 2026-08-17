@@ -69,8 +69,14 @@ train:
     n_samples: 1000
     cfg_scale: 1.0
     c2st_repeats: 1         # 1 repeat x 5 folds keeps the in-training hook cheap
+    c2st_clf: "gb"          # gb (strong critic) | logreg (the weak critic TabSyn/TabDiff use)
     decode_clip: true       # decode exactly as pt.generate_tabular does, otherwise the
     decode_round: true      # discretization artifact dominates C2ST and hides real progress
+    include_target: true    # the label counts as one more column, as in every baseline paper
+    quality: true           # alpha-Precision / beta-Recall / Authenticity / Density / Coverage
+    privacy: true           # DCR. NOTE: dcr_share needs val_frac~0.5 to be sharp; at 0.1 it is
+    density_k: 5            # diluted toward 0.5 — read dcr_ratio_p5 / dcr_zero_frac instead
+    dcr_repeats: 5
   pos_per_sample: 32
   neg_per_sample: 16
   positive_bank_size: 128

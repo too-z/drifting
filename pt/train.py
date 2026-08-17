@@ -172,9 +172,15 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     n_samples = int(cfg_eval.get("n_samples", 1000))
     cfg_scale = float(cfg_eval.get("cfg_scale", 1.0))
     c2st_repeats = int(cfg_eval.get("c2st_repeats", 1))
+    c2st_clf = str(cfg_eval.get("c2st_clf", "gb"))
     cat_temperature = float(cfg_eval.get("cat_temperature", 0.0))
     decode_clip = bool(cfg_eval.get("decode_clip", True))
     decode_round = bool(cfg_eval.get("decode_round", True))
+    include_target = bool(cfg_eval.get("include_target", True))
+    quality = bool(cfg_eval.get("quality", True))
+    privacy = bool(cfg_eval.get("privacy", True))
+    density_k = int(cfg_eval.get("density_k", 5))
+    dcr_repeats = int(cfg_eval.get("dcr_repeats", 5))
 
     target_col = ds_kwargs.get("target_col", "Label")
     drop_cols = list(ds_kwargs.get("drop_cols", ["Domain"]))
@@ -216,8 +222,12 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
         res = evaluate_tabular(
             real_df, gen_df, feat_cols, cat_cols=categorical_cols, target_col=target_col,
             real_test_df=val_df, seed=seed, verbose=False, c2st_repeats=c2st_repeats,
+            c2st_clf=c2st_clf, include_target=include_target, quality=quality,
+            privacy=privacy, density_k=density_k, dcr_repeats=dcr_repeats,
         )
-        return {k: v for k, v in res.items() if not k.startswith("_")}
+        # corr_diff_argmax is a column-pair name, not a scalar the logger can plot
+        return {k: v for k, v in res.items()
+                if not k.startswith("_") and not isinstance(v, str)}
 
     return eval_fn
 
