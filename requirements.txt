@@ -40,3 +40,5 @@ sympy==1.14.0
 tokenizers==0.22.2
 tqdm==4.67.3
 wandb==0.25.1
+
+sdmetrics==0.28.2

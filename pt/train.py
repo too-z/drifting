@@ -173,6 +173,7 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     cfg_scale = float(cfg_eval.get("cfg_scale", 1.0))
     c2st_repeats = int(cfg_eval.get("c2st_repeats", 1))
     c2st_clf = str(cfg_eval.get("c2st_clf", "gb"))
+    c2st_sdmetrics_seeds = int(cfg_eval.get("c2st_sdmetrics_seeds", 5))
     cat_temperature = float(cfg_eval.get("cat_temperature", 0.0))
     decode_clip = bool(cfg_eval.get("decode_clip", True))
     decode_round = bool(cfg_eval.get("decode_round", True))
@@ -222,7 +223,8 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
         res = evaluate_tabular(
             real_df, gen_df, feat_cols, cat_cols=categorical_cols, target_col=target_col,
             real_test_df=val_df, seed=seed, verbose=False, c2st_repeats=c2st_repeats,
-            c2st_clf=c2st_clf, include_target=include_target, quality=quality,
+            c2st_clf=c2st_clf, c2st_sdmetrics_seeds=c2st_sdmetrics_seeds,
+            include_target=include_target, quality=quality,
             privacy=privacy, density_k=density_k, dcr_repeats=dcr_repeats,
         )
         # corr_diff_argmax is a column-pair name, not a scalar the logger can plot
@@ -348,7 +350,7 @@ def train_gen(
 
     log_for_0("Starting training loop...")
     initial_step = step
-    best_c2st = float("inf")
+    best_c2st = float("-inf")   # c2st_sdmetrics: 100 = indistinguishable, higher is better
     pbar = tqdm(range(step, total_steps), initial=step, total=total_steps) if is_rank_zero() else range(step, total_steps)
     num_classes = int((model_config or {}).get("num_classes", 1000))
     memory_bank_positive = ArrayMemoryBank(num_classes=num_classes, max_size=positive_bank_size)
@@ -478,9 +480,9 @@ def train_gen(
             module.eval()
             if is_rank_zero():
                 res = tabular_eval_fn(get_ema_module(), step)
-                c2st = res.get("c2st_auc_mean", float("nan"))
+                c2st = res.get("c2st_sdmetrics", float("nan"))
                 if np.isfinite(c2st):
-                    best_c2st = min(best_c2st, c2st)
+                    best_c2st = max(best_c2st, c2st)
                     res["best_c2st"] = best_c2st
                 log_for_0(
                     "step=%d c2st=%.4f w1=%.4f tv=%.4f corr=%.4f tstr=%.4f trtr=%.4f",

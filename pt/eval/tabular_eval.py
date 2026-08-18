@@ -12,6 +12,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 
+from sdmetrics.single_table import LogisticDetection
+
 _warned: set = set()
 
 def _warn_once(msg):
@@ -460,6 +462,31 @@ def c2st_auc(real_df, gen_df, cols, cat_cols=(), n_splits=5, n_repeats=3, seed=0
   }
 
 
+def c2st_sdmetrics(real_df, gen_df, num_cols, cat_cols, n_seeds=5):
+  """TabDiff/TabSyn이 보고하는 C2ST와 동일한 계산. 100 = indistinguishable.
+
+  sdmetrics는 StratifiedKFold(shuffle=True)에 random_state를 주지 않아
+  매 호출마다 값이 달라진다 → n_seeds번 반복 평균.
+  """
+  cols = list(num_cols) + list(cat_cols)
+  real, gen = real_df[cols].copy(), gen_df[cols].copy()
+  real.columns = range(len(cols))
+  gen.columns = range(len(cols))
+  metadata = {
+    "columns": {i: {"sdtype": "numerical" if i < len(num_cols) else "categorical"}
+                for i in range(len(cols))},
+    "primary_key": [],   # sdmetrics가 ''로 기본값을 넣으면 int 컬럼명에서 터진다
+  }
+  # HyperTransformer는 sdtype이 아니라 dtype.kind로 one-hot 여부를 정한다.
+  # 정수로 코딩된 범주형은 str로 캐스팅하지 않으면 ordinal 숫자로 취급된다.
+  for i in range(len(num_cols), len(cols)):
+    real[i] = real[i].astype(str)
+    gen[i] = gen[i].astype(str)
+
+  scores = [LogisticDetection.compute(real, gen, metadata) for _ in range(n_seeds)]
+  return {"c2st_sdmetrics": float(np.mean(scores)) * 100,
+          "c2st_sdmetrics_std": float(np.std(scores)) * 100}
+
 # --------------------------------------------------------------------------- #
 # 4. downstream utility
 # --------------------------------------------------------------------------- #
@@ -738,6 +765,7 @@ def dcr_metrics(real_df, gen_df, cols, cat_cols=(), real_holdout_df=None, seed=0
 
 def evaluate_tabular(real_df, gen_df, feat_cols, cat_cols, target_col=None, real_test_df=None,
                      seed=0, verbose=True, c2st_splits=5, c2st_repeats=3, c2st_clf="gb",
+                     c2st_sdmetrics_seeds=5,
                      include_target=True, quality=True, privacy=True, legacy_corr=True,
                      dcr_repeats=5, density_k=5):
   """All seven metric families, on one call.
@@ -763,6 +791,10 @@ def evaluate_tabular(real_df, gen_df, feat_cols, cat_cols, target_col=None, real
 
   results.update(c2st_auc(real_df, gen_df, cols, cat_cols=cat_set, n_splits=c2st_splits,
                           n_repeats=c2st_repeats, seed=seed, clf=c2st_clf))
+  results.update(c2st_sdmetrics(real_df, gen_df,
+                                [c for c in cols if c not in cat_set],
+                                [c for c in cols if c in cat_set],
+                                n_seeds=c2st_sdmetrics_seeds))
 
   if has_target:
     results.update(tstr(real_df, gen_df, feat_cols, target_col,
@@ -813,6 +845,8 @@ def _print_report(res, cols, cat_set, per_kind, n_real, n_gen):
         f" +/- {_fmt(g('c2st_auc_std'), 6)}")
   print(f"    C2ST accuracy / score (1 = ideal)     : {_fmt(g('c2st_acc_mean'))}"
         f" / {_fmt(g('c2st_score'), 6)}")
+  print(f"    C2ST sdmetrics (100 = ideal)          : {_fmt(g('c2st_sdmetrics'))}"
+        f" +/- {_fmt(g('c2st_sdmetrics_std'), 6)}")
   auc = g("c2st_auc_mean")
   if isinstance(auc, float) and np.isfinite(auc) and auc < 0.45:
     print("      note: AUC << 0.5 means real and synthetic share verbatim rows,"
