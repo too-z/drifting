@@ -38,10 +38,11 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
   print(f"step={metadata.get('step')} tabular={getattr(model, 'tabular', False)} "
         f"cont_transform={cont_transform} real_split={real_split}")
 
+  cat_softmax = bool(config.model.get("cat_softmax", False))
   postprocess = get_tabular_postprocess_fn(
     csv_path=csv_path, target_col=target_col, drop_cols=drop_cols, val_frac=val_frac,
     seed=ds_seed, categorical_cols=tuple(categorical_cols), cont_transform=cont_transform,
-    cat_temperature=cat_temperature, decode_seed=seed,
+    cat_temperature=cat_temperature, cat_softmax=cat_softmax, decode_seed=seed,
     clip=decode_clip, round_grid=decode_round,
   )
 
