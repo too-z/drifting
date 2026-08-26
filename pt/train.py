@@ -175,6 +175,7 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     c2st_clf = str(cfg_eval.get("c2st_clf", "gb"))
     c2st_sdmetrics_seeds = int(cfg_eval.get("c2st_sdmetrics_seeds", 5))
     cat_temperature = float(cfg_eval.get("cat_temperature", 0.0))
+    cat_softmax = bool(config.model.get("cat_softmax", False))
     decode_clip = bool(cfg_eval.get("decode_clip", True))
     decode_round = bool(cfg_eval.get("decode_round", True))
     include_target = bool(cfg_eval.get("include_target", True))
@@ -196,7 +197,7 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     postprocess = get_tabular_postprocess_fn(
         csv_path=ds_kwargs["csv_path"], target_col=target_col, drop_cols=drop_cols,
         val_frac=val_frac, seed=ds_seed, categorical_cols=tuple(categorical_cols),
-        cont_transform=cont_transform, cat_temperature=cat_temperature,
+        cont_transform=cont_transform, cat_temperature=cat_temperature, cat_softmax=cat_softmax,
         decode_seed=seed, clip=decode_clip, round_grid=decode_round,
     )
 
