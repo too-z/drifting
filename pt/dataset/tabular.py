@@ -176,7 +176,7 @@ def _encode(X, features, cat_smooth=0.0):
       parts.append(oh)
   return np.concatenate(parts, axis=1).astype(np.float32)
 
-def _decode(flat, features, cat_temperature=0.0, rng=None, clip=False, round_grid=False):
+def _decode(flat, features, cat_temperature=0.0, cat_softmax=False, rng=None, clip=False, round_grid=False):
   flat = np.asarray(flat, dtype=np.float32)
   flat = flat.reshape(-1, flat.shape[-1])
   out = np.empty((flat.shape[0], len(features)), dtype=np.float32)
@@ -191,9 +191,12 @@ def _decode(flat, features, cat_temperature=0.0, rng=None, clip=False, round_gri
       out[:, k] = _cont_inverse(sl[:, 0], f, clip=clip, round_grid=round_grid)
     else:
       if cat_temperature and cat_temperature > 0:
-        logits = sl / float(cat_temperature)
-        logits = logits - logits.max(axis=1, keepdims=True)
-        p = np.exp(logits)
+        if cat_softmax:
+          p = np.clip(sl, 1e-12, None) ** (1.0 / float(cat_temperature))
+        else:        
+          logits = sl / float(cat_temperature)
+          logits = logits - logits.max(axis=1, keepdims=True)
+          p = np.exp(logits)
         p /= p.sum(axis=1, keepdims=True)
         cdf = np.cumsum(p, axis=1)
         u = rng.random((p.shape[0], 1))
@@ -330,13 +333,13 @@ def create_tabular_split(
   
   return loader, preprocess_fn, postprocess_fn
 
-def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, decode_seed=None, clip=False, round_grid=False):
+def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, cat_softmax=False, decode_seed=None, clip=False, round_grid=False):
   data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   features = data["features"]
   rng = np.random.default_rng(decode_seed) if decode_seed is not None else None
 
   def postprocess(samples):
-    return torch.from_numpy(_decode(samples.detach().cpu().numpy(), features, cat_temperature=cat_temperature, rng=rng, clip=clip, round_grid=round_grid,)).float()
+    return torch.from_numpy(_decode(samples.detach().cpu().numpy(), features, cat_temperature=cat_temperature, cat_softmax=cat_softmax, rng=rng, clip=clip, round_grid=round_grid,)).float()
 
   return postprocess
 
