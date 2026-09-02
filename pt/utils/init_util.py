@@ -32,13 +32,13 @@ def _load_local(kind, path):
     return state, metadata
 
 
-def load_generator_model_and_params(init_from, hf_cache_dir):
+def load_generator_model_and_params(init_from):
     """Returns (model, metadata) for inference; weights are the EMA export."""
     from pt.models.generator import build_generator_from_config
-    from pt.models.hf import load_generator_torch
+    # from pt.models.hf import load_generator_torch
 
-    if init_from.startswith("hf://"):
-        return load_generator_torch(init_from[len("hf://"):], hf_cache_dir)
+    # if init_from.startswith("hf://"):
+    #     return load_generator_torch(init_from[len("hf://"):], hf_cache_dir)
     state, metadata = _load_local("gen", init_from)
     model = build_generator_from_config(metadata["model_config"])
     model.load_state_dict(state, strict=True)
