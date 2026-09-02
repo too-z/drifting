@@ -11,7 +11,6 @@ from pt.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
 from pt.utils.init_util import load_generator_model_and_params
 from pt.utils.misc import load_config
 from pt.utils.rng import make_generator
-from utils import env
 
 @torch.no_grad()
 def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
@@ -33,7 +32,7 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
   num_classes = data["num_classes"]
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-  model, metadata = load_generator_model_and_params(artifact, env.HF_ROOT)
+  model, metadata = load_generator_model_and_params(artifact)
   model = model.to(device).eval()
   print(f"step={metadata.get('step')} tabular={getattr(model, 'tabular', False)} "
         f"cont_transform={cont_transform} real_split={real_split}")
