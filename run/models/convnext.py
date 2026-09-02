@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pt.models.mae_model import safe_std
+from run.models.mae_model import safe_std
 
 _MODEL_NAMES = {
     "base": "facebook/convnextv2-base-22k-224",

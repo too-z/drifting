@@ -424,14 +424,14 @@ def build_activation_function(
     convnext_model = None
 
     if use_mae:
-        from pt.utils.init_util import load_mae_model_and_params
+        from run.utils.init_util import load_mae_model_and_params
 
         feature_model, _ = load_mae_model_and_params(mae_path, hf_cache_dir)
         feature_model = feature_model.to(device).eval().requires_grad_(False)
         variables["mae_model"] = feature_model
 
     if use_convnext:
-        from pt.models.convnext import load_convnext_model
+        from run.models.convnext import load_convnext_model
 
         convnext_model = load_convnext_model("base", use_bf16=convnext_bf16)
         convnext_model = convnext_model.to(device).eval().requires_grad_(False)

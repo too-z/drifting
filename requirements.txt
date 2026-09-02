@@ -34,7 +34,7 @@ PyYAML==6.0.3
 regex==2026.2.28
 safetensors==0.7.0
 scipy==1.15.3
-scikit-learn==1.6.1  # pt.eval.tabular_eval: C2ST / TSTR critics, kNN for the quality metrics
+scikit-learn==1.6.1  # run.eval.tabular_eval: C2ST / TSTR critics, kNN for the quality metrics
 simplejson==3.20.2
 sympy==1.14.0
 tokenizers==0.22.2

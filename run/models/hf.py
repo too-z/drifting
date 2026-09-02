@@ -13,7 +13,7 @@ from pathlib import Path
 
 HF_REPO_ID = "Goodeat/drifting"
 
-_CONVERTER = {"gen": "pt.convert.convert_generator", "mae": "pt.convert.convert_mae"}
+_CONVERTER = {"gen": "run.convert.convert_generator", "mae": "run.convert.convert_mae"}
 
 
 def read_metadata(art_dir):
@@ -50,7 +50,7 @@ def _load_state(art_dir):
 
 def load_generator_torch(name, output_root):
     """Returns (model, metadata) with EMA weights loaded, in eval mode."""
-    from pt.models.generator import build_generator_from_config
+    from run.models.generator import build_generator_from_config
 
     art_dir = _ensure_torch_artifact("gen", name, output_root)
     metadata = read_metadata(art_dir)
@@ -62,7 +62,7 @@ def load_generator_torch(name, output_root):
 
 def load_mae_torch(name, output_root):
     """Returns (model, metadata) with EMA weights loaded, in eval mode."""
-    from pt.models.mae_model import mae_from_metadata
+    from run.models.mae_model import mae_from_metadata
 
     art_dir = _ensure_torch_artifact("mae", name, output_root)
     metadata = read_metadata(art_dir)

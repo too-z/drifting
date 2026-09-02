@@ -26,18 +26,18 @@ import torch
 from einops import rearrange, repeat
 from tqdm import tqdm
 
-from pt.dataset.dataset import get_postprocess_fn, infinite_sampler
-from pt.drift_loss import drift_loss
-from pt.memory_bank import ArrayMemoryBank
-from pt.models.mae_model import build_activation_function
-from pt.utils import dist_util
-from pt.utils.ckpt_util import restore_checkpoint, save_checkpoint, save_params_ema_artifact
-from pt.utils.fid_util import evaluate_fid
-from pt.utils.init_util import load_params_for_init
-from pt.utils.logging import is_rank_zero, log_for_0
-from pt.utils.misc import load_config
-from pt.utils.model_builder import build_model_dict, set_lr
-from pt.utils.rng import fold, make_generator
+from run.dataset.dataset import get_postprocess_fn, infinite_sampler
+from run.drift_loss import drift_loss
+from run.memory_bank import ArrayMemoryBank
+from run.models.mae_model import build_activation_function
+from run.utils import dist_util
+from run.utils.ckpt_util import restore_checkpoint, save_checkpoint, save_params_ema_artifact
+from run.utils.fid_util import evaluate_fid
+from run.utils.init_util import load_params_for_init
+from run.utils.logging import is_rank_zero, log_for_0
+from run.utils.misc import load_config
+from run.utils.model_builder import build_model_dict, set_lr
+from run.utils.rng import fold, make_generator
 from utils import env
 
 
@@ -164,8 +164,8 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     """
     import pandas as pd
 
-    from pt.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
-    from pt.eval.tabular_eval import evaluate_tabular
+    from run.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
+    from run.eval.tabular_eval import evaluate_tabular
 
     ds_kwargs = dict(config.dataset.get("kwargs", {}))
     cfg_eval = dict(overrides)
@@ -236,7 +236,7 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
 
 
 def make_gen_step(gen_module, postprocess_fn, device):
-    """FID generation callable following the pt.utils.fid_util contract:
+    """FID generation callable following the run.utils.fid_util contract:
     gen_step(batch, rng=<int>, cfg_scale=<float>) -> [0,1] BCHW."""
 
     @torch.no_grad()
@@ -512,7 +512,7 @@ def main_gen(config, output_dir="runs"):
         config.logging = {}
     config.logging.name = Path(output_dir).resolve().name
 
-    from pt.models.generator import DitGen
+    from run.models.generator import DitGen
 
     dist_util.init_distributed()
     if "hsdp_dim" in config:
@@ -550,7 +550,7 @@ def main_gen(config, output_dir="runs"):
 
     dataset_type = str(config.dataset.get("type", "imagenet")).lower()
     if dataset_type == "tabular":
-        from pt.dataset.tabular import _resolve_csv_path
+        from run.dataset.tabular import _resolve_csv_path
         log_for_0("tabular data path: %s", _resolve_csv_path(config.dataset.kwargs.csv_path))
     train_kwargs = dict(config.train)
     train_kwargs.setdefault("eval_fid", dataset_type != "tabular")

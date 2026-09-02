@@ -21,8 +21,8 @@ from typing import Any, Dict, Optional
 
 import torch
 
-from pt.utils import dist_util
-from pt.utils.logging import log_for_0
+from run.utils import dist_util
+from run.utils.logging import log_for_0
 
 _CKPT_RE = re.compile(r"checkpoint_(\d+)\.pt$")
 
@@ -95,7 +95,7 @@ def save_checkpoint(module, optimizer, ema, step: int, *, ema_decay: float,
             "config": dict(config) if config else None,
         }
         path = ckpt_dir / f"checkpoint_{int(step)}.pt"
-        tmp = path.with_suffix(".pt.tmp")
+        tmp = path.with_suffix(".run.tmp")
         torch.save(payload, tmp)
         tmp.replace(path)
 

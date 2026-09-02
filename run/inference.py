@@ -1,7 +1,7 @@
 """FID-only inference entrypoint — torch port of inference.py.
 
 Usage:
-    python -m pt.inference --init-from "hf://latent_L_sota" --workdir runs/fid
+    python -m run.inference --init-from "hf://latent_L_sota" --workdir runs/fid
 
 CLI is identical to the JAX version; --hsdp-dim is accepted and ignored
 (single-process torch evaluation; the model is small enough per GPU).
@@ -16,12 +16,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from pt.dataset.dataset import create_imagenet_split, get_postprocess_fn
-from pt.utils import dist_util
-from pt.utils.fid_util import evaluate_fid
-from pt.utils.init_util import load_generator_model_and_params
-from pt.utils.logging import WandbLogger
-from pt.utils.rng import make_generator
+from run.dataset.dataset import create_imagenet_split, get_postprocess_fn
+from run.utils import dist_util
+from run.utils.fid_util import evaluate_fid
+from run.utils.init_util import load_generator_model_and_params
+from run.utils.logging import WandbLogger
+from run.utils.rng import make_generator
 from utils.env import HF_ROOT
 
 
@@ -38,7 +38,7 @@ def _is_latent(metadata: dict) -> bool:
 def _load_model(init_from: str, device=None):
     """Build generator, load EMA params, return (gen_step, metadata).
 
-    gen_step follows the pt.utils.fid_util.evaluate_fid contract:
+    gen_step follows the run.utils.fid_util.evaluate_fid contract:
     gen_step(batch, rng=<int>, cfg_scale=<float>) -> [0,1] BCHW samples.
     """
     if device is None:

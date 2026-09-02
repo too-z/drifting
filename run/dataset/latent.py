@@ -11,7 +11,7 @@ Deltas vs the JAX builder (documented, behavior-preserving):
   * both moments and moments_flip are sampled with the same per-batch seed,
     matching the JAX reuse of one rng key for both encodes.
 
-Multi-GPU: torchrun --nproc_per_node=N -m pt.dataset.latent ...
+Multi-GPU: torchrun --nproc_per_node=N -m run.dataset.latent ...
 """
 
 from __future__ import annotations
@@ -107,8 +107,8 @@ def create_cached_dataset(
     save_workers: int = 0,
 ) -> None:
     """Encode ImageNet train/val images and write latent cache files."""
-    from pt.dataset.vae import vae_enc_decode
-    from pt.utils import dist_util
+    from run.dataset.vae import vae_enc_decode
+    from run.utils import dist_util
 
     dist_util.init_distributed()
     dev = dist_util.device()
@@ -172,7 +172,7 @@ def create_cached_dataset(
             local_samples = samples[process_slice_start:process_slice_end].to(dev)
             # One seed per (step, rank); reused for the flipped encode, matching
             # the JAX builder's single rng key per batch.
-            from pt.utils.rng import make_generator
+            from run.utils.rng import make_generator
 
             moments = encode_fn(
                 local_samples, generator=make_generator(dev, "latent-cache", step, rk)

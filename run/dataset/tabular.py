@@ -11,7 +11,7 @@ from scipy.special import ndtr, ndtri
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 
-from pt.utils import dist_util
+from run.utils import dist_util
 
 _tabular_cache: dict = {}
 

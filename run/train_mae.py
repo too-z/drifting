@@ -5,7 +5,7 @@ Structure mirrors the JAX file function-by-function. Key mappings:
   * optax.global_norm + clip_by_global_norm(applied pre-optimizer)
       -> clip_grad_norm_ (returns the pre-clip norm, logged as g_norm)
   * flax TrainState(ema_params, ema_decay) -> (module, optimizer, ema dict, step)
-  * named rng streams via fold_in(step) -> pt.utils.rng.make_generator
+  * named rng streams via fold_in(step) -> run.utils.rng.make_generator
   * pad_and_merge global eval accounting -> per-rank pad + all-reduced
     weighted sums (rank-major trim reproduces the merged-mask semantics)
 """
@@ -22,15 +22,15 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from pt.dataset.dataset import epoch0_sampler, infinite_sampler
-from pt.models.mae_model import MAEResNet
-from pt.utils import dist_util
-from pt.utils.ckpt_util import restore_checkpoint, save_checkpoint, save_params_ema_artifact
-from pt.utils.init_util import load_params_for_init
-from pt.utils.logging import is_rank_zero, log_for_0
-from pt.utils.misc import load_config
-from pt.utils.model_builder import build_model_dict, set_lr
-from pt.utils.rng import make_generator
+from run.dataset.dataset import epoch0_sampler, infinite_sampler
+from run.models.mae_model import MAEResNet
+from run.utils import dist_util
+from run.utils.ckpt_util import restore_checkpoint, save_checkpoint, save_params_ema_artifact
+from run.utils.init_util import load_params_for_init
+from run.utils.logging import is_rank_zero, log_for_0
+from run.utils.misc import load_config
+from run.utils.model_builder import build_model_dict, set_lr
+from run.utils.rng import make_generator
 from utils import env
 
 

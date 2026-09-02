@@ -1,7 +1,7 @@
 """Convert a Flax generator artifact (ema_params.msgpack) to torch safetensors.
 
 Usage (flax optional; pure-msgpack fallback used if flax is unavailable):
-    python -m pt.convert.convert_generator --name ablation [--root ~/hf_cache]
+    python -m run.convert.convert_generator --name ablation [--root ~/hf_cache]
 
 Reads  <root>/models/gen/jax/<name>/   (downloads from HF if missing)
 Writes <root>/models/gen/torch/<name>/ {model.safetensors, metadata.json}
@@ -14,7 +14,7 @@ import argparse
 import os
 from pathlib import Path
 
-from pt.convert.common import (
+from run.convert.common import (
     flatten_tree,
     load_flax_artifact,
     map_params,
@@ -66,7 +66,7 @@ def ensure_artifact(root, name):
 
 
 def convert(name, root):
-    from pt.models.generator import build_generator_from_config
+    from run.models.generator import build_generator_from_config
 
     art_dir = ensure_artifact(root, name)
     params, metadata = load_flax_artifact(art_dir)

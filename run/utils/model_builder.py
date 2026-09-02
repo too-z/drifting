@@ -11,11 +11,11 @@ from pathlib import Path
 
 import torch
 
-from pt.dataset.dataset import create_imagenet_split
-from pt.utils import dist_util
-from pt.utils.logging import WandbLogger
-from pt.utils.misc import EasyDict
-from pt.utils.rng import seed_param_init
+from run.dataset.dataset import create_imagenet_split
+from run.utils import dist_util
+from run.utils.logging import WandbLogger
+from run.utils.misc import EasyDict
+from run.utils.rng import seed_param_init
 
 
 def create_learning_rate_fn(
@@ -57,7 +57,7 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
     dataset_type = str(config.dataset.get("type", "imagenet")).lower()
 
     if dataset_type == "tabular":
-        from pt.dataset.tabular import get_tabular_schema
+        from run.dataset.tabular import get_tabular_schema
         schema = get_tabular_schema(**dict(config.dataset.get("kwargs", {})))
         config.model["feature_dims"] = list(schema["feature_dims"])
         config.model["feature_kinds"] = list(schema["feature_kinds"])
@@ -76,7 +76,7 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
     dataset_type = str(config.dataset.get("type", "imagenet")).lower()
 
     if dataset_type == "tabular":
-        from pt.dataset.tabular import create_tabular_split
+        from run.dataset.tabular import create_tabular_split
         ds_kwargs = dict(config.dataset.get("kwargs", {}))
         train_loader, preprocess_fn, postprocess_fn = create_tabular_split(
             batch_size = batch_size_per_rank,

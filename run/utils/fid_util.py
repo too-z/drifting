@@ -25,9 +25,9 @@ import torch
 
 from utils.env import IMAGENET_FID_NPZ, IMAGENET_PR_NPZ
 
-from pt.utils.torch_fid import resize
-from pt.utils.torch_fid.fid import compute_frechet_distance
-from pt.utils.torch_fid.precision_recall import compute_precision_recall
+from run.utils.torch_fid import resize
+from run.utils.torch_fid.fid import compute_frechet_distance
+from run.utils.torch_fid.precision_recall import compute_precision_recall
 
 
 INCEPTION_NET = None
@@ -46,7 +46,7 @@ def _canonical_dataset_name(name: str) -> str:
 
 def _build_torch_inception():
     """Create the (cached) torch Inception network used for FID/IS features."""
-    from pt.utils.torch_fid.inception import InceptionV3
+    from run.utils.torch_fid.inception import InceptionV3
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = InceptionV3().to(device).eval()

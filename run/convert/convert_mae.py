@@ -1,7 +1,7 @@
 """Convert a Flax MAE artifact (ema_params.msgpack) to torch safetensors.
 
 Usage (flax optional; pure-msgpack fallback used if flax is unavailable):
-    python -m pt.convert.convert_mae --name mae_latent_256 [--root ~/hf_cache]
+    python -m run.convert.convert_mae --name mae_latent_256 [--root ~/hf_cache]
 
 Reads  <root>/models/mae/jax/<name>/
 Writes <root>/models/mae/torch/<name>/ {model.safetensors, metadata.json}
@@ -13,7 +13,7 @@ import argparse
 import os
 from pathlib import Path
 
-from pt.convert.common import (
+from run.convert.common import (
     flatten_tree,
     load_flax_artifact,
     map_params,
@@ -51,7 +51,7 @@ def ensure_artifact(root, name):
 
 
 def convert(name, root):
-    from pt.models.mae_model import mae_from_metadata
+    from run.models.mae_model import mae_from_metadata
 
     art_dir = ensure_artifact(root, name)
     params, metadata = load_flax_artifact(art_dir)

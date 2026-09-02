@@ -20,7 +20,7 @@ except ModuleNotFoundError:
     if not absl_logging.handlers:
       _py_logging.basicConfig(level=_py_logging.INFO)
 
-from pt.utils import dist_util
+from run.utils import dist_util
 
 
 def is_rank_zero() -> bool:

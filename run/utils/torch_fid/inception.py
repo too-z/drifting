@@ -9,7 +9,7 @@ Flax module as used by utils/fid_util.py:
 
 - no input resize and no ``transform_input``: inputs are expected to be
   ``(B, 3, 299, 299)`` float in ``[-1, 1]``, i.e. the output of
-  ``pt.utils.torch_fid.resize.forward`` (this corresponds to pytorch-fid's
+  ``run.utils.torch_fid.resize.forward`` (this corresponds to pytorch-fid's
   ``resize_input=False, normalize_input=False``);
 - pooled features are the global average pool of Mixed_7c, shape ``(B, 2048)``;
 - logits are computed from the pooled features with the ``fc`` kernel WITHOUT
@@ -45,7 +45,7 @@ class InceptionV3(nn.Module):
 
         Args:
             x: ``(B, 3, 299, 299)`` float tensor in ``[-1, 1]`` (BCHW), as
-                produced by ``pt.utils.torch_fid.resize.forward``.
+                produced by ``run.utils.torch_fid.resize.forward``.
 
         Returns:
             Tuple ``(pooled_features, logits)`` with shapes ``(B, 2048)`` and

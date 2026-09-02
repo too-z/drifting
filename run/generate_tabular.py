@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from pt.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
-from pt.utils.init_util import load_generator_model_and_params
-from pt.utils.misc import load_config
-from pt.utils.rng import make_generator
+from run.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
+from run.utils.init_util import load_generator_model_and_params
+from run.utils.misc import load_config
+from run.utils.rng import make_generator
 
 @torch.no_grad()
 def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
@@ -77,7 +77,7 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
           f"{real_df[c].std():9.3f} {gen_df[c].std():9.3f}")
   results = None
   if do_eval:
-    from pt.eval.tabular_eval import evaluate_tabular
+    from run.eval.tabular_eval import evaluate_tabular
     results = evaluate_tabular(real_df, gen_df, feat_cols, cat_cols=categorical_cols,
                                target_col=target_col,
                                real_test_df=None if real_split == "val" else val_df,

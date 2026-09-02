@@ -19,7 +19,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from pt.utils import dist_util
+from run.utils import dist_util
 from utils import env  # paths read at call time so tests can override them
 
 
@@ -61,7 +61,7 @@ def _build_transforms(resolution: int, use_aug: bool, split: str):
 
 def _build_imagenet_dataset(*, resolution: int, use_aug: bool, use_cache: bool, split: str):
     if use_cache:
-        from pt.dataset.latent import LatentDataset
+        from run.dataset.latent import LatentDataset
         return LatentDataset(root=os.path.join(env.IMAGENET_CACHE_PATH, split))
 
     from torchvision.datasets import ImageFolder
@@ -126,7 +126,7 @@ def create_imagenet_split(
     )
 
     if use_latent or use_cache:
-        from pt.dataset.vae import vae_enc_decode
+        from run.dataset.vae import vae_enc_decode
         encode_fn, decode_fn = vae_enc_decode()
         if use_cache:
             def preprocess_fn(batch, generator=None):
@@ -162,7 +162,7 @@ def create_imagenet_split(
 def get_postprocess_fn(*, use_aug: bool = False, use_latent: bool = False, use_cache: bool = False, has_clip: bool = True):
     """Return postprocess function for generated samples by dataset mode flags."""
     if use_latent or use_cache:
-        from pt.dataset.vae import vae_enc_decode
+        from run.dataset.vae import vae_enc_decode
         _, decode_fn = vae_enc_decode()
 
         def postprocess(images):

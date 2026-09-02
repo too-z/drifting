@@ -25,7 +25,7 @@ def _load_local(kind, path):
     if metadata.get("backend") not in (None, "torch"):
         raise ValueError(
             f"{art_dir} is a {metadata.get('backend')} artifact; convert it with "
-            f"python -m pt.convert.convert_{'generator' if kind == 'gen' else 'mae'}"
+            f"python -m run.convert.convert_{'generator' if kind == 'gen' else 'mae'}"
         )
     fname = metadata.get("path", "model.safetensors")
     state = load_file(str(art_dir / fname))
@@ -34,8 +34,8 @@ def _load_local(kind, path):
 
 def load_generator_model_and_params(init_from):
     """Returns (model, metadata) for inference; weights are the EMA export."""
-    from pt.models.generator import build_generator_from_config
-    # from pt.models.hf import load_generator_torch
+    from run.models.generator import build_generator_from_config
+    # from run.models.hf import load_generator_torch
 
     # if init_from.startswith("hf://"):
     #     return load_generator_torch(init_from[len("hf://"):], hf_cache_dir)
@@ -51,7 +51,7 @@ def load_params_for_init(kind, init_from, hf_cache_dir):
     returns a state_dict from an hf:// or local artifact. The trainer loads it
     into BOTH the live params and the EMA (matching the JAX behavior)."""
     if init_from.startswith("hf://"):
-        from pt.models.hf import _ensure_torch_artifact
+        from run.models.hf import _ensure_torch_artifact
 
         art_dir = _ensure_torch_artifact(kind, init_from[len("hf://"):], hf_cache_dir)
         from safetensors.torch import load_file
@@ -63,8 +63,8 @@ def load_params_for_init(kind, init_from, hf_cache_dir):
 
 def load_mae_model_and_params(path, hf_cache_dir):
     """Returns (model, metadata) for the frozen feature model."""
-    from pt.models.hf import load_mae_torch
-    from pt.models.mae_model import mae_from_metadata
+    from run.models.hf import load_mae_torch
+    from run.models.mae_model import mae_from_metadata
 
     if path.startswith("hf://"):
         return load_mae_torch(path[len("hf://"):], hf_cache_dir)
