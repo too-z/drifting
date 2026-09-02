@@ -1,12 +1,6 @@
 runs/
 data/
-wandb/
 __pycache__/
 *.pyc
-tests/parity/fixtures/
-_sanity_imagenet/
-_sanity_cache/
-_train6gb_smoke_run/
-assets/
 
 *.csv
