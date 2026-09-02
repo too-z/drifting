@@ -549,6 +549,9 @@ def main_gen(config, output_dir="runs"):
     )
 
     dataset_type = str(config.dataset.get("type", "imagenet")).lower()
+    if dataset_type == "tabular":
+        from pt.dataset.tabular import _resolve_csv_path
+        log_for_0("tabular data path: %s", _resolve_csv_path(config.dataset.kwargs.csv_path))
     train_kwargs = dict(config.train)
     train_kwargs.setdefault("eval_fid", dataset_type != "tabular")
     tabular_eval_cfg = dict(train_kwargs.pop("tabular_eval", {}) or {})
