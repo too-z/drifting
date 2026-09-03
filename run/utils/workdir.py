@@ -22,7 +22,7 @@ def run_stem(spec: str) -> str:
 def list_runs(stem: str):
     runs = list_runs(stem)
     if not runs:
-        known = sorted({p.name.rsplit("-", 2)[0] for p in Path(RESULT_ROOT).glob("*-*")
+        known = sorted({p.name.rsplit("-", 2)[0] for p in Path(RESULTS_ROOT).glob("*-*")
                         if p.is_dir()}) if Path(RESULTS_ROOT).is_dir() else []
         hint = f"known runs: {', '.join(known)}" if known else f" {RESULTS_ROOT} / has no runs yet"
         raise FileNotFoundError(f"no {RESULTS_ROOT}/{stem}-* run directory found;{hint}")
