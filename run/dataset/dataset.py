@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
 from run.utils import dist_util
-from utils import env  # paths read at call time so tests can override them
+from run.utils import env  # paths read at call time so tests can override them
 
 
 def center_crop_arr(pil_image: Image.Image, image_size: int) -> Image.Image:
