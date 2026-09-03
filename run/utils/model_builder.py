@@ -11,9 +11,8 @@ from pathlib import Path
 
 import torch
 
-from run.dataset.dataset import create_imagenet_split
 from run.utils import dist_util
-from run.utils.logging import WandbLogger
+from run.utils.logging import MetricLogger
 from run.utils.misc import EasyDict
 from run.utils.rng import seed_param_init
 
@@ -54,14 +53,15 @@ def set_lr(optimizer, lr):
 
 def build_model_dict(config, model_class, *, workdir: str = "runs"):
     """Build model, datasets, optimizer, and logger from config."""
-    dataset_type = str(config.dataset.get("type", "imagenet")).lower()
+    dataset_type = str(config.dataset.get("type", "tabular")).lower()
+    if dataset_type != "tabular":
+        raise ValueError(f"dataset.type={dataset_type!r} is not supported;")
 
-    if dataset_type == "tabular":
-        from run.dataset.tabular import get_tabular_schema
-        schema = get_tabular_schema(**dict(config.dataset.get("kwargs", {})))
-        config.model["feature_dims"] = list(schema["feature_dims"])
-        config.model["feature_kinds"] = list(schema["feature_kinds"])
-        config.model["input_size"] = len(schema["feature_dims"])
+    from run.dataset.tabular import get_tabular_schema
+    schema = get_tabular_schema(**dict(config.dataset.get("kwargs", {})))
+    config.model["feature_dims"] = list(schema["feature_dims"])
+    config.model["feature_kinds"] = list(schema["feature_kinds"])    
+    config.model["input_size"] = len(schema["feature_dims"])
 
     seed_param_init(int(config.train.get("seed", 42))) 
 
@@ -73,48 +73,14 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
 
     print("Building dataset...")
     batch_size_per_rank = config.dataset.batch_size // dist_util.world_size()
-    dataset_type = str(config.dataset.get("type", "imagenet")).lower()
-
-    if dataset_type == "tabular":
-        from run.dataset.tabular import create_tabular_split
-        ds_kwargs = dict(config.dataset.get("kwargs", {}))
-        train_loader, preprocess_fn, postprocess_fn = create_tabular_split(
-            batch_size = batch_size_per_rank,
-            split="train",
-            **ds_kwargs,
-        )
-        eval_loader, _, _ = create_tabular_split(
-            batch_size = config.dataset.eval_batch_size // dist_util.world_size(),
-            split="val",
-            **ds_kwargs,
-        )
-        dataset_name = str(config.dataset.get("name", "tabular"))
-    else:
-        resolution = int(config.dataset.resolution)
-        use_aug = bool(config.dataset.get("use_aug", False))
-        use_latent = bool(config.dataset.get("use_latent", False))
-        use_cache = bool(config.dataset.get("use_cache", False))
     
-        train_loader, preprocess_fn, postprocess_fn = create_imagenet_split(
-            resolution=resolution,
-            use_aug=use_aug,
-            use_latent=use_latent,
-            use_cache=use_cache,
-            batch_size=batch_size_per_rank,
-            split="train",
-            **config.dataset.kwargs,
-        )
-    
-        eval_loader, _, _ = create_imagenet_split(
-            resolution=resolution,
-            use_aug=use_aug,
-            use_latent=use_latent,
-            use_cache=use_cache,
-            batch_size=config.dataset.eval_batch_size // dist_util.world_size(),
-            split="val",
-            **config.dataset.kwargs,
-        )
-        dataset_name = f"imagenet{resolution}"
+    from run.dataset.tabular import create_tabular_split
+    ds_kwargs = dict(config.dataset.get("kwargs", {}))
+    train_loader, preprocess_fn, _ = create_tabular_split(
+        batch_size = batch_size_per_rank,
+        split="train",
+        **ds_kwargs,
+    )
 
     learning_rate_fn = create_learning_rate_fn(**config.optimizer.lr_schedule)
 
@@ -126,15 +92,10 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
         weight_decay=config.optimizer.get("weight_decay", 0.0),
     )
 
-    logger = WandbLogger()
+    logger = MetricLogger()
     w_cfg = EasyDict(dict(config.get("logging", {})))
-    use_wandb = bool(w_cfg.get("use_wandb", config.get("use_wandb", True)))
-    if "use_wandb" in w_cfg:
-        del w_cfg["use_wandb"]
     output_root = Path(workdir).resolve()
     logger.set_logging(
-        config=config,
-        use_wandb=use_wandb,
         workdir=str(output_root),
         **w_cfg,
     )
@@ -143,12 +104,8 @@ def build_model_dict(config, model_class, *, workdir: str = "runs"):
         model=model,
         optimizer=optimizer,
         logger=logger,
-        eval_loader=eval_loader,
         train_loader=train_loader,
-        dataset_name=dataset_name,
         preprocess_fn=preprocess_fn,
-        postprocess_fn=postprocess_fn,
-        train=config.train,
         learning_rate_fn=learning_rate_fn,
         feature=config.get("feature", {}),
     )
