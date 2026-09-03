@@ -13,7 +13,7 @@ IMAGENET_CACHE_PATH = ""
 IMAGENET_FID_NPZ = "/path/to/imagenet_256_fid_stats.npz"
 IMAGENET_PR_NPZ = "/path/to/imagenet_val_prc_arr0.npz"
 
-TABULAR_DATA_ROOT = os.environ.get("TABULAR_DATA_ROOT", str(BASE / "data"))
+TABULAR_DATA_ROOT = os.environ.get("TABULAR_DATA_ROOT", str(REPO / "data"))
 
 HF_REPO_ID = "Goodeat/drifting"
 HF_ROOT = os.environ.get("HF_ROOT", str(BASE/"hf_cache"))
