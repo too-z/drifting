@@ -20,7 +20,7 @@ def run_stem(spec: str) -> str:
     return path.stem if path.suffix in (".yaml", ".yml") else path.name
 
 def list_runs(stem: str):
-    root = Path(RESULT_ROOTS)
+    root = Path(RESULTS_ROOT)
     if not root.is_dir():
         return []
     return sorted((p for p in root.glob(f"{stem}-*") if p.is_dir()), key=lambda p: p.name)
