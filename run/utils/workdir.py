@@ -28,6 +28,14 @@ def list_runs(stem: str):
         raise FileNotFoundError(f"no {RESULTS_ROOT}/{stem}-* run directory found;{hint}")
     return str(runs[-1])
 
+def latest_run(stem: str) -> str:
+    runs = list_runs(stem)
+    if not runs:
+        known = sorted({p.name.rsplit("-", 2)[0] for p in Path(RESULTS_ROOT).glob("*-*") if p.is_dir()}) if Path(RESULTS_ROOT).is_dir() else []
+        hint = f" known runs: {', '.join(known)}" if known else f" {RESULTS_ROOT}/has no runs yet"
+        raise FileNotFoundError(f"no {RESULTS_ROOT}/{stem}-* run directory found;{hint}")
+    return str(runs[-1])
+                       
 def find_workdir(workdir: Optional[str] = None, config_path: Optional[str] = None) -> str:
     if workdir and Path(workdir).is_dir():
         return workdir
