@@ -20,19 +20,16 @@ def run_stem(spec: str) -> str:
     return path.stem if path.suffix in (".yaml", ".yml") else path.name
 
 def list_runs(stem: str):
-    runs = list_runs(stem)
-    if not runs:
-        known = sorted({p.name.rsplit("-", 2)[0] for p in Path(RESULTS_ROOT).glob("*-*")
-                        if p.is_dir()}) if Path(RESULTS_ROOT).is_dir() else []
-        hint = f"known runs: {', '.join(known)}" if known else f" {RESULTS_ROOT} / has no runs yet"
-        raise FileNotFoundError(f"no {RESULTS_ROOT}/{stem}-* run directory found;{hint}")
-    return str(runs[-1])
+    root = Path(RESULT_ROOTS)
+    if not root.is_dir():
+        return []
+    return sorted((p for p in root.glob(f"{stem}-*") if p.is_dir()), key=lambda p: p.name)
 
 def latest_run(stem: str) -> str:
     runs = list_runs(stem)
     if not runs:
         known = sorted({p.name.rsplit("-", 2)[0] for p in Path(RESULTS_ROOT).glob("*-*") if p.is_dir()}) if Path(RESULTS_ROOT).is_dir() else []
-        hint = f" known runs: {', '.join(known)}" if known else f" {RESULTS_ROOT}/has no runs yet"
+        hint = f" known runs: {', '.join(known)}" if known else f" {RESULTS_ROOT}/ has no runs yet"
         raise FileNotFoundError(f"no {RESULTS_ROOT}/{stem}-* run directory found;{hint}")
     return str(runs[-1])
                        
@@ -46,7 +43,7 @@ def find_workdir(workdir: Optional[str] = None, config_path: Optional[str] = Non
 
 def default_out_csv(workdir: str, name: str = "generated.csv") -> Path:
     path = Path(workdir)
-    if path.name == "params_ems":
+    if path.name == "params_ema":
         path = path.parent
     return path / name
 
