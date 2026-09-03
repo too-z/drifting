@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 BASE = REPO.parent
 
 IMAGENET_PATH = "/path/to/imagenet"
