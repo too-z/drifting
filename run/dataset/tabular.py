@@ -333,6 +333,22 @@ def create_tabular_split(
   
   return loader, preprocess_fn, postprocess_fn
 
+def infinite_sampler(it, start_step: int = 0):
+  """Yield `(features, label)` numpy batches forever, resuming at `start_step`."""
+  step_per_epoch = len(it)
+  epoch_idx = start_step // step_per_epoch
+  it.sampler.set_epoch(epoch_idx)
+  skip_batches = start_step % step_per_epoch
+  while True:
+    for i, batch in enumerate(it):
+      if skip_batches > 0 and i < skip_batches:
+        continue
+      x, label = batch
+      yield (x.numpy(), label.numpy())
+    skip_batches = 0
+    epoch_idx += 1
+    it.sampler.set_epoch(epoch_idx)
+
 def get_tabular_postprocess_fn(*, csv_path, target_col="Label", drop_cols=("Domain",), val_frac=0.1, seed=42, categorical_cols=(), cont_transform="zscore", cat_temperature=0.0, cat_softmax=False, decode_seed=None, clip=False, round_grid=False):
   data = _load_tabular(csv_path, target_col, list(drop_cols), val_frac, seed, tuple(categorical_cols), cont_transform)
   features = data["features"]
