@@ -11,7 +11,7 @@ from run.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
 from run.utils.init_util import load_generator_model_and_params
 from run.utils.misc import load_config
 from run.utils.rng import make_generator
-from run.utils.workdir import default_out_csv
+from run.utils.workdir import default_out_csv, find_workdir
 
 @torch.no_grad()
 def generate(workdir, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
@@ -102,7 +102,7 @@ def generate(workdir, config_path, n, cfg_scale, seed, out_csv, cat_temperature=
 
 def main():
   ap = argparse.ArgumentParser()
-  ap.add_argument("--workdir", required=True, help="train workdir or a params_ema dir")
+  ap.add_argument("--workdir", "--artifact", dest="workdir", default=None, help="train workdir or a params_ema dir")
   ap.add_argument("--config", required=True)
   ap.add_argument("--n", type=int, default=400)
   ap.add_argument("--cfg", type=float, default=1.0)
@@ -123,8 +123,10 @@ def main():
                   help="score the feature block only; by default the label is one more column")
   ap.add_argument("--no-eval", action="store_true")
   args = ap.parse_args()
-  out_csv = args.out or str(default_out_csv(args.workdir))
-  generate(args.workdir, args.config, args.n, args.cfg, args.seed, out_csv,
+  workdir = find_workdir(args.workdir, config_path = args.config)
+  print(f"workdir={workdir}")
+  out_csv = args.out or str(default_out_csv(workdir))
+  generate(workdir, args.config, args.n, args.cfg, args.seed, out_csv,
            cat_temperature=args.cat_temp, do_eval=not args.no_eval,
            real_split=args.real_split, decode_clip=args.decode_clip,
            decode_round=args.decode_round, metrics_out=args.metrics_out,
