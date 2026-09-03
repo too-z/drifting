@@ -1,4 +1,4 @@
-runs/
+results/
 data/
 __pycache__/
 *.pyc
