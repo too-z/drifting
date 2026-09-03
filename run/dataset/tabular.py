@@ -30,7 +30,7 @@ def worker_init_fn(worker_id:int, rank:int) -> None:
 def _resolve_csv_path(csv_path: str) -> str:
   if os.path.isabs(csv_path) and os.path.exists(csv_path):
     return csv_path
-  from utils import env
+  from run.utils import env
 
   candidates = [
     csv_path, 
