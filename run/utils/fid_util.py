@@ -23,7 +23,7 @@ from typing import Dict
 import numpy as np
 import torch
 
-from utils.env import IMAGENET_FID_NPZ, IMAGENET_PR_NPZ
+from run.utils.env import IMAGENET_FID_NPZ, IMAGENET_PR_NPZ
 
 from run.utils.torch_fid import resize
 from run.utils.torch_fid.fid import compute_frechet_distance
