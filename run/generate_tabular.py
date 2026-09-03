@@ -11,9 +11,10 @@ from run.dataset.tabular import _load_tabular, get_tabular_postprocess_fn
 from run.utils.init_util import load_generator_model_and_params
 from run.utils.misc import load_config
 from run.utils.rng import make_generator
+from run.utils.workdir import default_out_csv
 
 @torch.no_grad()
-def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
+def generate(workdir, config_path, n, cfg_scale, seed, out_csv, cat_temperature=0.0, do_eval=True,
              real_split="train", decode_clip=False, decode_round=False, metrics_out="",
              c2st_clf="gb", c2st_repeats=3, include_target=True):
   config = load_config(config_path)
@@ -32,7 +33,7 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
   num_classes = data["num_classes"]
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-  model, metadata = load_generator_model_and_params(artifact)
+  model, metadata = load_generator_model_and_params(workdir)
   model = model.to(device).eval()
   print(f"step={metadata.get('step')} tabular={getattr(model, 'tabular', False)} "
         f"cont_transform={cont_transform} real_split={real_split}")
@@ -88,7 +89,7 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
       payload["_per_column"] = results.get("_per_column", {})
       payload["_per_column_by_kind"] = results.get("_per_column_by_kind", {})
       payload["_eval_columns"] = results.get("_eval_columns", [])
-      payload["config"] = {"artifact": artifact, "config": config_path, "n": n,
+      payload["config"] = {"workdir": workdir, "config": config_path, "n": n,
                            "cfg": cfg_scale, "seed": seed, "cont_transform": cont_transform,
                            "cat_temperature": cat_temperature, "real_split": real_split,
                            "decode_clip": decode_clip, "decode_round": decode_round,
@@ -101,12 +102,12 @@ def generate(artifact, config_path, n, cfg_scale, seed, out_csv, cat_temperature
 
 def main():
   ap = argparse.ArgumentParser()
-  ap.add_argument("--artifact", required=True, help="run dir or params_ema dir")
+  ap.add_argument("--workdir", required=True, help="train workdir or a params_ema dir")
   ap.add_argument("--config", required=True)
   ap.add_argument("--n", type=int, default=400)
   ap.add_argument("--cfg", type=float, default=1.0)
   ap.add_argument("--seed", type=int, default=0)
-  ap.add_argument("--out", default="")
+  ap.add_argument("--out", default="output CSV")
   ap.add_argument("--cat-temp", type=float, default=0.0)
   ap.add_argument("--real-split", default="train", choices=["train", "val", "all"],
                   help="real reference split for the fidelity metrics")
@@ -122,7 +123,8 @@ def main():
                   help="score the feature block only; by default the label is one more column")
   ap.add_argument("--no-eval", action="store_true")
   args = ap.parse_args()
-  generate(args.artifact, args.config, args.n, args.cfg, args.seed, args.out,
+  out_csv = args.out or str(default_out_csv(args.workdir))
+  generate(args.workdir, args.config, args.n, args.cfg, args.seed, out_csv,
            cat_temperature=args.cat_temp, do_eval=not args.no_eval,
            real_split=args.real_split, decode_clip=args.decode_clip,
            decode_round=args.decode_round, metrics_out=args.metrics_out,
