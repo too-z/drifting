@@ -1,7 +1,4 @@
 logging:
-  project: "drift-tabular"
-  entity: "YOUR_WANDB_ENTITY"
-  use_wandb: false
   log_every_k: 10
 
 dataset:
@@ -91,7 +88,6 @@ train:
     use_mean: false
   loss_kwargs:
     R_list: [0.2, 0.05, 0.02]
-  cfg_list: [1.0]
   ema_decay: 0.999
   push_per_step: 64
 
