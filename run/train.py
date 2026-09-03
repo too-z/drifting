@@ -37,6 +37,7 @@ from run.utils.logging import is_rank_zero, log_for_0
 from run.utils.misc import load_config
 from run.utils.model_builder import build_model_dict, set_lr
 from run.utils.rng import fold, make_generator
+from run.utils.workdir import resolve_workdir
 from run.utils import env
 
 
@@ -496,13 +497,14 @@ def main_gen(config, output_dir="runs"):
 def main(args):
     dist_util.init_distributed()
     config = load_config(args.config)
-    main_gen(config, output_dir=args.workdir)
+    workdir = resove_workdir(getattr(args, "workdir", None), config_path=args.config)
+    log_for_0("workdir=%s", workdir)
+    main_gen(config, output_dir=workdir)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, required=True)
-    parser.add_argument("--workdir", type=str, default="runs")
+    parser.add_argument("--workdir", type=str, default=None)
     args = parser.parse_args()
-    args.output_dir = args.workdir
     main(args)
