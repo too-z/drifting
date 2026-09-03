@@ -22,11 +22,6 @@ from run.utils.fid_util import evaluate_fid
 from run.utils.init_util import load_generator_model_and_params
 from run.utils.logging import WandbLogger
 from run.utils.rng import make_generator
-from utils.env import HF_ROOT
-
-
-def _hf_root():
-    return os.environ.get("HF_ROOT", HF_ROOT)
 
 
 def _is_latent(metadata: dict) -> bool:
@@ -43,7 +38,7 @@ def _load_model(init_from: str, device=None):
     """
     if device is None:
         device = dist_util.device()
-    model, metadata = load_generator_model_and_params(init_from, hf_cache_dir=_hf_root())
+    model, metadata = load_generator_model_and_params(init_from)
     model = model.to(device)
     latent = _is_latent(metadata)
     postprocess_fn = get_postprocess_fn(use_aug=False, use_latent=False, use_cache=latent)
