@@ -64,6 +64,6 @@ def resolve_workdir(workdir: Optional[str] = None, config_path: Optional[str] = 
     if workdir:
         return workdir
     resolved = _broadcast(_unused(default_workdir(config_path)))
-    Path(resolved).mkdir(parent=True, exist_ok=True)
+    Path(resolved).mkdir(parents=True, exist_ok=True)
     return resolved
 
