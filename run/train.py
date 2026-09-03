@@ -38,7 +38,7 @@ from run.utils.logging import is_rank_zero, log_for_0
 from run.utils.misc import load_config
 from run.utils.model_builder import build_model_dict, set_lr
 from run.utils.rng import fold, make_generator
-from utils import env
+from run.utils import env
 
 
 def sample_cfg(B, *, cfg_min, cfg_max, neg_cfg_pw, no_cfg_frac, generator, device):
