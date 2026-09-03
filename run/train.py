@@ -26,13 +26,12 @@ import torch
 from einops import rearrange, repeat
 from tqdm import tqdm
 
-from run.dataset.dataset import get_postprocess_fn, infinite_sampler
+from run.dataset.tabular import infinite_sampler
 from run.drift_loss import drift_loss
 from run.memory_bank import ArrayMemoryBank
-from run.models.mae_model import build_activation_function
+from run.models.features import build_activation_function
 from run.utils import dist_util
 from run.utils.ckpt_util import restore_checkpoint, save_checkpoint, save_params_ema_artifact
-from run.utils.fid_util import evaluate_fid
 from run.utils.init_util import load_params_for_init
 from run.utils.logging import is_rank_zero, log_for_0
 from run.utils.misc import load_config
@@ -235,36 +234,17 @@ def build_tabular_eval_fn(config, device, *, seed=0, **overrides):
     return eval_fn
 
 
-def make_gen_step(gen_module, postprocess_fn, device):
-    """FID generation callable following the run.utils.fid_util contract:
-    gen_step(batch, rng=<int>, cfg_scale=<float>) -> [0,1] BCHW."""
-
-    @torch.no_grad()
-    def gen_step(batch, rng=0, cfg_scale=1.0):
-        _, labels = batch
-        labels = torch.as_tensor(np.asarray(labels)).long().to(device)
-        g = make_generator(device, "eval-noise", int(rng))
-        samples = gen_module(labels, cfg_scale=float(cfg_scale), generator=g)["samples"]
-        return postprocess_fn(samples)
-
-    return gen_step
-
-
 def train_gen(
     model,  # DitGen model instance
     optimizer,  # torch.optim.AdamW
     logger,  # logger with log_dict / finish
-    eval_loader,  # evaluation dataloader iterator source
     train_loader,  # training dataloader iterator source
     learning_rate_fn,  # callable(step) -> lr
     preprocess_fn,  # preprocessing function for dataloader batches
-    postprocess_fn,  # generated sample postprocess function
-    dataset_name="imagenet256",
     train_batch_size=0,
     total_steps=100000,
     save_per_step=10000,
     eval_per_step=5000,
-    eval_samples=50000,
     activation_fn=None,
     feature_params=None,  # dict of frozen feature modules (torch backend)
     ema_decay=0.999,
@@ -280,7 +260,6 @@ def train_gen(
     ),
     positive_bank_size=64,
     negative_bank_size=512,
-    cfg_list=(1.0,),
     activation_kwargs=dict(
         patch_mean_size=[2, 4],
         patch_std_size=[2, 4],
@@ -297,7 +276,6 @@ def train_gen(
     push_at_resume=3000,
     workdir="runs",
     model_config=None,
-    eval_fid=True,
     tabular_eval_fn=None,
 ):
     """Main training loop (torch port of train.py:train_gen)."""
@@ -307,12 +285,6 @@ def train_gen(
         ema_decay = float(ema_decay[0])
     else:
         ema_decay = float(ema_decay)
-    if cfg_list is None:
-        cfg_list = [1.0]
-    elif isinstance(cfg_list, (list, tuple)):
-        cfg_list = [float(cfg) for cfg in cfg_list]
-    else:
-        cfg_list = [float(cfg_list)]
 
     device = dist_util.device()
     module = model.to(device)
@@ -321,7 +293,7 @@ def train_gen(
     step = restore_checkpoint(module, optimizer, ema, workdir=workdir)
     if step == 0 and init_from:
         log_for_0("Initializing generator params from init_from=%s", init_from)
-        sd = load_params_for_init("gen", init_from, hf_cache_dir=env.HF_ROOT)
+        sd = load_params_for_init(init_from)
         module.load_state_dict(sd, strict=True)
         ema = {k: p.detach().clone().float() for k, p in module.named_parameters()}
 
@@ -444,39 +416,6 @@ def train_gen(
             )
             dist_util.barrier("save checkpoint finished")
 
-        if eval_fid and ((step % eval_per_step == 0) or (step == 1) or (step == total_steps)):
-            is_sanity = (step == 1)  # sanity check that the FID env works
-
-            n_samples = 500 if is_sanity else eval_samples
-            folder_prefix = "sanity" if is_sanity else "CFG"
-            module.eval()
-            gen_step_fn = make_gen_step(get_ema_module(), postprocess_fn, device)
-            round_best_fid = float("inf")
-            round_best_cfg = cfg_list[0]
-            eval_cfg_list = cfg_list if not is_sanity else [cfg_list[0]]
-
-            for eval_cfg in eval_cfg_list:
-                dist_util.barrier("eval started")
-                result = evaluate_fid(
-                    dataset_name=dataset_name,
-                    gen_func=gen_step_fn,
-                    gen_params={"cfg_scale": eval_cfg},
-                    eval_loader=eval_loader,
-                    logger=logger,
-                    num_samples=n_samples,
-                    log_folder=f"{folder_prefix}{eval_cfg}",
-                    log_prefix=f"EMA_{ema_decay:g}",
-                    rng_eval=seed + 1,
-                )
-                dist_util.barrier("eval finished")
-                fid_val = result.get("fid", float("inf"))
-                if fid_val < round_best_fid:
-                    round_best_fid = fid_val
-                    round_best_cfg = eval_cfg
-            if not is_sanity:
-                log_for_0("best_fid=%.4f best_cfg=%.1f (step=%d)", round_best_fid, round_best_cfg, step)
-                logger.log_dict({"best_fid": round_best_fid, "best_cfg": round_best_cfg})
-
         if tabular_eval_fn is not None and ((step % eval_per_step == 0) or (step == total_steps)):
             module.eval()
             if is_rank_zero():
@@ -500,7 +439,7 @@ def train_gen(
 
     dist_util.barrier("train loop finished")
     logger.finish()
-    del model, optimizer, eval_loader, train_loader
+    del model, optimizer, train_loader
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -510,53 +449,22 @@ def train_gen(
 def main_gen(config, output_dir="runs"):
     if "logging" not in config:
         config.logging = {}
-    config.logging.name = Path(output_dir).resolve().name
 
     from run.models.generator import DitGen
 
     dist_util.init_distributed()
     if "hsdp_dim" in config:
         log_for_0("hsdp_dim=%s is ignored under the torch backend (DDP).", config["hsdp_dim"])
-
     model_dict = build_model_dict(config, DitGen, workdir=output_dir)
-    use_aug = bool(config.dataset.get("use_aug", False))
-    use_latent = bool(config.dataset.get("use_latent", False))
-    use_cache = bool(config.dataset.get("use_cache", False))
-    postprocess_fn_noclip = get_postprocess_fn(
-        use_aug=use_aug,
-        use_latent=use_latent,
-        use_cache=use_cache,
-        has_clip=False,
-    )
     feature_cfg = model_dict.feature
-    mae_path = str(feature_cfg.get("mae_path", "")).strip()
-    if not mae_path and bool(feature_cfg.get("use_mae", True)):
-        load_dict = feature_cfg.get("load_dict", {})
-        if str(load_dict.get("source", "hf")).strip().lower() == "local":
-            mae_path = str(load_dict.get("path", "")).strip()
-        else:
-            model_name = str(load_dict.get("hf_model_name", "")).strip()
-            if model_name:
-                mae_path = f"hf://{model_name}"
-    if bool(feature_cfg.get("use_mae", True)) and not mae_path:
-        raise ValueError("feature.mae_path (or feature.load_dict.hf_model_name / feature.load_dict.path) is required when use_mae=true.")
-    activation_fn, variables = build_activation_function(
-        mae_path=mae_path,
-        use_convnext=bool(feature_cfg.get("use_convnext", False)),
-        convnext_bf16=bool(feature_cfg.get("convnext_bf16", False)),
-        use_mae=bool(feature_cfg.get("use_mae", True)),
-        postprocess_fn=postprocess_fn_noclip,
-    )
-
-    dataset_type = str(config.dataset.get("type", "imagenet")).lower()
-    if dataset_type == "tabular":
-        from run.dataset.tabular import _resolve_csv_path
-        log_for_0("tabular data path: %s", _resolve_csv_path(config.dataset.kwargs.csv_path))
+    activation_fn, variables = build_activation_function()
+    dataset_type = str(config.dataset.get("type", "tabular")).lower()
+    if dataset_type != "tabular":
+        raise ValueError(f"dataset.type={dataset_type!r} is not supported; only tabular remains")
     train_kwargs = dict(config.train)
-    train_kwargs.setdefault("eval_fid", dataset_type != "tabular")
     tabular_eval_cfg = dict(train_kwargs.pop("tabular_eval", {}) or {})
     tabular_eval_fn = None
-    if dataset_type == "tabular" and tabular_eval_cfg.get("enabled", True):
+    if tabular_eval_cfg.get("enabled", True):
         tabular_eval_cfg.pop("enabled", None)
         tabular_eval_fn = build_tabular_eval_fn(
             config, dist_util.device(),
@@ -567,12 +475,9 @@ def main_gen(config, output_dir="runs"):
         model=model_dict.model,
         optimizer=model_dict.optimizer,
         logger=model_dict.logger,
-        eval_loader=model_dict.eval_loader,
         train_loader=model_dict.train_loader,
         learning_rate_fn=model_dict.learning_rate_fn,
         preprocess_fn=model_dict.preprocess_fn,
-        postprocess_fn=model_dict.postprocess_fn,
-        dataset_name=model_dict.dataset_name,
         activation_fn=activation_fn,
         feature_params=variables,
         # jax artifacts carry num_classes inside model_config (it comes from
