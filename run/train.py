@@ -497,7 +497,7 @@ def main_gen(config, output_dir="runs"):
 def main(args):
     dist_util.init_distributed()
     config = load_config(args.config)
-    workdir = resove_workdir(getattr(args, "workdir", None), config_path=args.config)
+    workdir = resolve_workdir(getattr(args, "workdir", None), config_path=args.config)
     log_for_0("workdir=%s", workdir)
     main_gen(config, output_dir=workdir)
 
