@@ -413,7 +413,7 @@ def build_activation_function(
     """
     import os
 
-    from utils.env import HF_ROOT
+    from run.utils.env import HF_ROOT
 
     hf_cache_dir = hf_cache_dir or os.environ.get("HF_ROOT", HF_ROOT)
     if device is None:
